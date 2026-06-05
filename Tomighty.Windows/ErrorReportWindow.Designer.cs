@@ -73,7 +73,7 @@
             this.reportButton.Name = "reportButton";
             this.reportButton.Size = new System.Drawing.Size(110, 23);
             this.reportButton.TabIndex = 0;
-            this.reportButton.Text = "Send Report Error";
+            this.reportButton.Text = "Send Error Report";
             this.reportButton.UseVisualStyleBackColor = true;
             this.reportButton.Click += new System.EventHandler(this.reportButton_Click);
             // 

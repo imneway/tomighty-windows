@@ -7,3 +7,4 @@ dist/
 *~
 .vs/
 *.user
+TestResult.xml

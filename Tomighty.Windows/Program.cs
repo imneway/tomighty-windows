@@ -7,6 +7,7 @@
 
 using System;
 using System.Windows.Forms;
+using Tomighty.Windows.UI;
 
 namespace Tomighty.Windows
 {
@@ -15,6 +16,7 @@ namespace Tomighty.Windows
         [STAThread]
         static void Main()
         {
+            DpiHelper.EnablePerMonitorV2();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             AppDomain.CurrentDomain.UnhandledException += (sender, args) => HandleUnhandledException(args.ExceptionObject as Exception);

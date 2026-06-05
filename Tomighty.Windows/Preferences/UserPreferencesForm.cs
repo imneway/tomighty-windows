@@ -6,6 +6,7 @@
 //
 
 using System.Windows.Forms;
+using Tomighty.Windows.UI;
 
 namespace Tomighty.Windows.Preferences
 {
@@ -26,6 +27,9 @@ namespace Tomighty.Windows.Preferences
             toastNotification.Checked = userPreferences.ShowToastNotifications;
             soundNotifications.Checked = userPreferences.PlaySoundNotifications;
             autoupdate.Checked = userPreferences.AutoUpdate;
+
+            ModernTheme.ApplyMicaDialog(this);
+            ModernTheme.StyleDefaultButton(okButton);
         }
 
         private void OnCancelButtonClick(object sender, System.EventArgs e)

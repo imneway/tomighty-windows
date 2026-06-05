@@ -8,6 +8,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using Tomighty.Windows.UI;
 
 namespace Tomighty.Windows.Tray
 {
@@ -62,6 +63,8 @@ namespace Tomighty.Windows.Tray
             contextMenu.Items.Add(preferencesItem);
             contextMenu.Items.Add(new ToolStripSeparator());
             contextMenu.Items.Add(exitItem);
+
+            ModernTheme.ApplyContextMenu(contextMenu);
         }
 
         public ContextMenuStrip Component => contextMenu;

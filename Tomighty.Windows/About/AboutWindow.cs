@@ -9,6 +9,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
+using Tomighty.Windows.UI;
 
 namespace Tomighty.Windows.About
 {
@@ -17,6 +18,8 @@ namespace Tomighty.Windows.About
         public AboutWindow()
         {
             InitializeComponent();
+            ModernTheme.ApplyMicaDialog(this);
+            ModernTheme.StyleDefaultButton(closeButton);
         }
 
         private void AboutForm_Load(object sender, EventArgs e)
