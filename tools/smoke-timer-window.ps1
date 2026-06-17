@@ -7,45 +7,46 @@ $ErrorActionPreference = "Stop"
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $appOutput = Join-Path $root "Tomighty.Windows\bin\$Configuration"
+$buildOutput = Join-Path $root "build"
+$hostSource = Join-Path $PSScriptRoot "TimerSmokeHost.cs"
+$hostConfig = Join-Path $PSScriptRoot "TimerSmokeHost.exe.config"
+$hostExe = Join-Path $appOutput "TimerSmokeHost.exe"
 
 if (-not $Output) {
-    $Output = Join-Path $root "build\timer-window-smoke.png"
+    $Output = Join-Path $buildOutput "timer-window-smoke.png"
 }
 
 New-Item -ItemType Directory -Path (Split-Path -Parent $Output) -Force | Out-Null
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+$csc = "${env:ProgramFiles}\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\Roslyn\csc.exe"
+if (-not (Test-Path $csc)) {
+    $cscCommand = Get-Command csc.exe -ErrorAction SilentlyContinue
+    if (-not $cscCommand) {
+        throw "csc.exe was not found. Install Visual Studio Build Tools or add csc to PATH."
+    }
 
-Set-Location $appOutput
-[System.Reflection.Assembly]::LoadFrom((Resolve-Path ".\Tomighty.Core.dll")) | Out-Null
-[System.Reflection.Assembly]::LoadFrom((Resolve-Path ".\Tomighty.Windows.exe")) | Out-Null
+    $csc = $cscCommand.Source
+}
 
-[System.Windows.Forms.Application]::EnableVisualStyles()
+& $csc `
+    /nologo `
+    /target:winexe `
+    /out:$hostExe `
+    /reference:System.dll `
+    /reference:System.Drawing.dll `
+    /reference:System.Windows.Forms.dll `
+    /reference:"$appOutput\Tomighty.Core.dll" `
+    /reference:"$appOutput\Tomighty.Windows.exe" `
+    $hostSource
 
-$form = New-Object Tomighty.Windows.Timer.TimerWindow
-$form.UpdateTitle("Pomodoro")
-$form.UpdateTimeDisplay("25:00")
-$form.UpdateColorScheme([System.Drawing.Color]::FromArgb(197, 47, 61))
-$form.SetTimerAction("Interrupt", [System.Action]{})
-$form.StartPosition = [System.Windows.Forms.FormStartPosition]::Manual
-$form.Location = New-Object System.Drawing.Point(80, 80)
-$form.Show()
+Copy-Item -Path $hostConfig -Destination "$hostExe.config" -Force
 
-[System.Windows.Forms.Application]::DoEvents()
-Start-Sleep -Milliseconds 700
-[System.Windows.Forms.Application]::DoEvents()
-
-$bounds = New-Object System.Drawing.Rectangle(0, 0, $form.Width, $form.Height)
-$bitmap = New-Object System.Drawing.Bitmap($bounds.Width, $bounds.Height)
-$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-
-$form.DrawToBitmap($bitmap, $bounds)
-$bitmap.Save($Output, [System.Drawing.Imaging.ImageFormat]::Png)
-
-$graphics.Dispose()
-$bitmap.Dispose()
-$form.Close()
-$form.Dispose()
+Push-Location $appOutput
+try {
+    & $hostExe $Output
+}
+finally {
+    Pop-Location
+}
 
 Write-Output $Output

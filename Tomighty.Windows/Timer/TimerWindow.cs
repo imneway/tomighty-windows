@@ -49,6 +49,7 @@ namespace Tomighty.Windows.Timer
         {
             InitializeComponent();
 
+            AutoScaleMode = AutoScaleMode.None;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
             ModernTheme.ApplyTimerWindow(this);
             pinButton.Visible = false;
@@ -59,9 +60,7 @@ namespace Tomighty.Windows.Timer
 
             Icon = Properties.Resources.icon_tomato_red;
 
-            titleLabel.Font = ModernTheme.SemiBoldTextFont(11f);
-            timeLabel.Font = ModernTheme.DisplayFont(46f);
-            timerButton.Font = ModernTheme.SemiBoldTextFont(9.5f);
+            ApplyCompactFonts();
             ApplyCompactWindowSize();
             UpdateCompactBounds();
 
@@ -122,6 +121,14 @@ namespace Tomighty.Windows.Timer
             Invalidate();
         }
 
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            ApplyCompactFonts();
+            ApplyCompactWindowSize();
+            UpdateCompactBounds();
+        }
+
         protected override void OnClientSizeChanged(EventArgs e)
         {
             base.OnClientSizeChanged(e);
@@ -135,6 +142,14 @@ namespace Tomighty.Windows.Timer
             var compactSize = new Size(CompactWidth, CompactHeight);
             if (ClientSize != compactSize)
                 ClientSize = compactSize;
+        }
+
+        private void ApplyCompactFonts()
+        {
+            var fontScale = 1f / GetCurrentDpiScale();
+            titleLabel.Font = ModernTheme.SemiBoldTextFont(11f * fontScale);
+            timeLabel.Font = ModernTheme.DisplayFont(46f * fontScale);
+            timerButton.Font = ModernTheme.SemiBoldTextFont(9.5f * fontScale);
         }
 
         private void UpdateCompactBounds()
@@ -264,15 +279,33 @@ namespace Tomighty.Windows.Timer
             return new Rectangle(CompactPadding, ClientSize.Height - CompactPadding - ActionButtonHeight, ClientSize.Width - CompactPadding * 2, ActionButtonHeight);
         }
 
+        private float GetCurrentDpiScale()
+        {
+            if (IsHandleCreated)
+            {
+                try
+                {
+                    return Math.Max(1f, GetDpiForWindow(Handle) / 96f);
+                }
+                catch
+                {
+                }
+            }
+
+            using (var graphics = CreateGraphics())
+            {
+                return Math.Max(1f, graphics.DpiX / 96f);
+            }
+        }
+
         private void DrawDropDownArrow(Graphics graphics, Rectangle bounds)
         {
-            var scale = graphics.DpiX / 96f;
-            var width = 8f * scale;
-            var height = 4f * scale;
+            const float width = 8f;
+            const float height = 4f;
             var centerX = bounds.Left + bounds.Width / 2f;
-            var centerY = bounds.Top + bounds.Height / 2f + 1f * scale;
+            var centerY = bounds.Top + bounds.Height / 2f + 1f;
 
-            using (var pen = new Pen(ModernTheme.TimerTextColor, Math.Max(1.4f, 1.6f * scale)))
+            using (var pen = new Pen(ModernTheme.TimerTextColor, 1.6f))
             {
                 pen.StartCap = LineCap.Round;
                 pen.EndCap = LineCap.Round;
@@ -418,13 +451,12 @@ namespace Tomighty.Windows.Timer
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 PaintParentBackground(e);
 
-                var scale = e.Graphics.DpiX / 96f;
-                var width = 8f * scale;
-                var height = 4f * scale;
+                const float width = 8f;
+                const float height = 4f;
                 var centerX = ClientRectangle.Left + ClientRectangle.Width / 2f;
-                var centerY = ClientRectangle.Top + ClientRectangle.Height / 2f + 1f * scale;
+                var centerY = ClientRectangle.Top + ClientRectangle.Height / 2f + 1f;
 
-                using (var pen = new Pen(ModernTheme.TimerTextColor, Math.Max(1.4f, 1.6f * scale)))
+                using (var pen = new Pen(ModernTheme.TimerTextColor, 1.6f))
                 {
                     pen.StartCap = LineCap.Round;
                     pen.EndCap = LineCap.Round;
@@ -552,7 +584,7 @@ namespace Tomighty.Windows.Timer
                         ? ModernTheme.ActionButtonHoverBackColor
                         : ModernTheme.ActionButtonBackColor;
 
-                var radius = Math.Max(1f, ActionButtonCornerRadius * graphics.DpiX / 96f);
+                var radius = Math.Max(1f, ActionButtonCornerRadius);
                 var pathBounds = new RectangleF(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
 
                 using (var path = CreateRoundedRectangle(pathBounds, radius))
@@ -584,5 +616,8 @@ namespace Tomighty.Windows.Timer
 
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetDpiForWindow(IntPtr hWnd);
     }
 }
