@@ -57,6 +57,7 @@ namespace Tomighty.Windows.Preferences
             this.toastNotification = new System.Windows.Forms.CheckBox();
             this.label8 = new System.Windows.Forms.Label();
             this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.showRemainingTimeOnTray = new System.Windows.Forms.CheckBox();
             this.autoupdate = new System.Windows.Forms.CheckBox();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.longBreakDurationTextBox)).BeginInit();
@@ -350,7 +351,8 @@ namespace Tomighty.Windows.Preferences
             this.label8.Text = "When the timer finishes:";
             // 
             // tabPage3
-            // 
+            //
+            this.tabPage3.Controls.Add(this.showRemainingTimeOnTray);
             this.tabPage3.Controls.Add(this.autoupdate);
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
             this.tabPage3.Name = "tabPage3";
@@ -359,6 +361,16 @@ namespace Tomighty.Windows.Preferences
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Miscellaneous";
             this.tabPage3.UseVisualStyleBackColor = true;
+            //
+            // showRemainingTimeOnTray
+            //
+            this.showRemainingTimeOnTray.AutoSize = true;
+            this.showRemainingTimeOnTray.Location = new System.Drawing.Point(14, 37);
+            this.showRemainingTimeOnTray.Name = "showRemainingTimeOnTray";
+            this.showRemainingTimeOnTray.Size = new System.Drawing.Size(160, 17);
+            this.showRemainingTimeOnTray.TabIndex = 1;
+            this.showRemainingTimeOnTray.Text = "Show remaining time on tray";
+            this.showRemainingTimeOnTray.UseVisualStyleBackColor = true;
             // 
             // autoupdate
             // 
@@ -428,6 +440,7 @@ namespace Tomighty.Windows.Preferences
         private System.Windows.Forms.CheckBox toastNotification;
         private System.Windows.Forms.CheckBox soundNotifications;
         private System.Windows.Forms.TabPage tabPage3;
+        private System.Windows.Forms.CheckBox showRemainingTimeOnTray;
         private System.Windows.Forms.CheckBox autoupdate;
     }
 }

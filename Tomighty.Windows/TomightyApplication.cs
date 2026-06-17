@@ -27,8 +27,9 @@ namespace Tomighty.Windows
             var trayMenu = new TrayMenu() as ITrayMenu;
             var trayIcon = CreateTrayIcon(trayMenu);
             var timerWindowPresenter = new TimerWindowPresenter(pomodoroEngine, timer, eventHub);
+            var trayIconController = new TrayIconController(trayIcon, timerWindowPresenter, userPreferences, eventHub);
+            trayIcon.Visible = true;
 
-            new TrayIconController(trayIcon, timerWindowPresenter, eventHub);
             new TrayMenuController(trayMenu, this, pomodoroEngine, eventHub);
             new NotificationsPresenter(pomodoroEngine, userPreferences, eventHub);
             new SoundNotificationPlayer(userPreferences, eventHub);
@@ -40,7 +41,11 @@ namespace Tomighty.Windows
             trayMenu.OnAboutClick((sender, e) => aboutWindowPresenter.Show());
             trayMenu.OnPreferencesClick((sender, e) => userPreferencesPresenter.Show());
 
-            ThreadExit += (sender, e) => trayIcon.Dispose();
+            ThreadExit += (sender, e) =>
+            {
+                trayIconController.Dispose();
+                trayIcon.Dispose();
+            };
 
             new StartupEvents(eventHub);
         }
@@ -50,9 +55,7 @@ namespace Tomighty.Windows
             var trayIcon = new NotifyIcon(new Container());
 
             trayIcon.Text = "Tomighty";
-            trayIcon.Icon = Properties.Resources.icon_tomato_white;
             trayIcon.ContextMenuStrip = trayMenu.Component;
-            trayIcon.Visible = true;
 
             return trayIcon;
         }

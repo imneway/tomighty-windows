@@ -579,6 +579,7 @@ namespace Tomighty.Tools
             public int MaxPomodoroCount => 4;
             public bool ShowToastNotifications => false;
             public bool PlaySoundNotifications => false;
+            public bool ShowRemainingTimeOnTray => true;
             public bool AutoUpdate => false;
 
             public void Update(Action<IMutableUserPreferences> action)

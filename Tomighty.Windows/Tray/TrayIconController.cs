@@ -17,20 +17,26 @@ namespace Tomighty.Windows.Tray
     {
         private readonly NotifyIcon notifyIcon;
         private readonly TimerWindowPresenter timerWindowPresenter;
+        private readonly IUserPreferences userPreferences;
+        private Icon currentIcon;
 
-        public TrayIconController(NotifyIcon notifyIcon, TimerWindowPresenter timerWindowPresenter, IEventHub eventHub)
+        public TrayIconController(NotifyIcon notifyIcon, TimerWindowPresenter timerWindowPresenter, IUserPreferences userPreferences, IEventHub eventHub)
         {
             this.notifyIcon = notifyIcon;
             this.timerWindowPresenter = timerWindowPresenter;
+            this.userPreferences = userPreferences;
 
             notifyIcon.Click += OnNotifyIconClick;
+            SetIcon(TrayIconFactory.CreateDefaultIcon());
 
             eventHub.Subscribe<TimerStarted>(OnTimerStarted);
             eventHub.Subscribe<TimerStopped>(OnTimerStopped);
+            eventHub.Subscribe<TimeElapsed>(OnTimeElapsed);
         }
         
         public void Dispose()
         {
+            DisposeCurrentIcon();
             notifyIcon.Container.Dispose();
         }
 
@@ -44,20 +50,38 @@ namespace Tomighty.Windows.Tray
 
         private void OnTimerStarted(TimerStarted @event)
         {
-            notifyIcon.Icon = GetIcon(@event.IntervalType);
+            UpdateTimerIcon(@event.RemainingTime);
         }
 
         private void OnTimerStopped(TimerStopped @event)
         {
-            notifyIcon.Icon = Properties.Resources.icon_tomato_white;
+            SetIcon(TrayIconFactory.CreateDefaultIcon());
         }
 
-        private Icon GetIcon(IntervalType intervalType)
+        private void OnTimeElapsed(TimeElapsed @event)
         {
-            if (intervalType == IntervalType.Pomodoro) return Properties.Resources.icon_tomato_red;
-            if (intervalType == IntervalType.ShortBreak) return Properties.Resources.icon_tomato_green;
-            if (intervalType == IntervalType.LongBreak) return Properties.Resources.icon_tomato_blue;
-            throw new ArgumentException($"Invalid interval type: {intervalType}");
+            UpdateTimerIcon(@event.RemainingTime);
+        }
+
+        private void UpdateTimerIcon(Duration remainingTime)
+        {
+            SetIcon(userPreferences.ShowRemainingTimeOnTray
+                ? TrayIconFactory.CreateRemainingTimeIcon(remainingTime)
+                : TrayIconFactory.CreateDefaultIcon());
+        }
+
+        private void SetIcon(Icon icon)
+        {
+            var previousIcon = currentIcon;
+            currentIcon = icon;
+            notifyIcon.Icon = currentIcon;
+            previousIcon?.Dispose();
+        }
+
+        private void DisposeCurrentIcon()
+        {
+            currentIcon?.Dispose();
+            currentIcon = null;
         }
     }
 }

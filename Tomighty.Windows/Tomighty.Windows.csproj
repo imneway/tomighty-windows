@@ -110,6 +110,7 @@
     <Compile Include="Tray\ITrayMenuMutator.cs" />
     <Compile Include="Tray\TrayMenu.cs" />
     <Compile Include="Tray\TrayMenuController.cs" />
+    <Compile Include="Tray\TrayIconFactory.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -188,6 +189,10 @@
     <Content Include="Resources\image_tomato_red.tiff" />
     <Content Include="Resources\image_tomato_green.tiff" />
     <Content Include="Resources\image_stop.tiff" />
+    <Content Include="..\assets\tomighty.png">
+      <Link>Resources\tomighty.png</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="LICENSE.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

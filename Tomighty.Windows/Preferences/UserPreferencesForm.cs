@@ -26,6 +26,7 @@ namespace Tomighty.Windows.Preferences
             maxPomodoroCountTextBox.Value = userPreferences.MaxPomodoroCount;
             toastNotification.Checked = userPreferences.ShowToastNotifications;
             soundNotifications.Checked = userPreferences.PlaySoundNotifications;
+            showRemainingTimeOnTray.Checked = userPreferences.ShowRemainingTimeOnTray;
             autoupdate.Checked = userPreferences.AutoUpdate;
 
             ModernTheme.ApplyMicaDialog(this);
@@ -47,6 +48,7 @@ namespace Tomighty.Windows.Preferences
                 newPreferences.MaxPomodoroCount = (int)maxPomodoroCountTextBox.Value;
                 newPreferences.ShowToastNotifications = toastNotification.Checked;
                 newPreferences.PlaySoundNotifications = soundNotifications.Checked;
+                newPreferences.ShowRemainingTimeOnTray = showRemainingTimeOnTray.Checked;
                 newPreferences.AutoUpdate = autoupdate.Checked;
             });
 

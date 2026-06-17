@@ -28,11 +28,11 @@ namespace Tomighty.Windows.Tray
 
         public TrayMenu()
         {
-            remainingTimeItem = new ToolStripMenuItem("00:00", Properties.Resources.image_clock);
+            remainingTimeItem = new ToolStripMenuItem("00:00", TrayIconFactory.CreateMenuImage());
             remainingTimeItem.Enabled = false;
             remainingTimeItem.Font = new Font(remainingTimeItem.Font, FontStyle.Bold);
 
-            stopTimerItem = new ToolStripMenuItem("Stop", Properties.Resources.image_stop);
+            stopTimerItem = new ToolStripMenuItem("Stop", TrayIconFactory.CreateMenuImage());
 
             pomodoroCountItem = new ToolStripMenuItem();
             pomodoroCountItem.Enabled = false;
@@ -40,9 +40,9 @@ namespace Tomighty.Windows.Tray
             resetPomodoroCountItem = new ToolStripMenuItem("Reset count");
             resetPomodoroCountItem.Enabled = false;
 
-            startPomodoroItem = new ToolStripMenuItem("Pomodoro", Properties.Resources.image_tomato_red);
-            startShortBreakItem = new ToolStripMenuItem("Short break", Properties.Resources.image_tomato_green);
-            startLongBreakItem = new ToolStripMenuItem("Long break", Properties.Resources.image_tomato_blue);
+            startPomodoroItem = new ToolStripMenuItem("Pomodoro", TrayIconFactory.CreateMenuImage());
+            startShortBreakItem = new ToolStripMenuItem("Short break", TrayIconFactory.CreateMenuImage());
+            startLongBreakItem = new ToolStripMenuItem("Long break", TrayIconFactory.CreateMenuImage());
 
             aboutItem = new ToolStripMenuItem("About Tomighty");
             preferencesItem = new ToolStripMenuItem("Preferences...");

@@ -59,6 +59,7 @@ namespace Tomighty.Windows.Preferences
             MaxPomodoroCount = 4,
             ShowToastNotifications = true,
             PlaySoundNotifications = true,
+            ShowRemainingTimeOnTray = true,
             AutoUpdate = true
         };
 
@@ -95,6 +96,12 @@ namespace Tomighty.Windows.Preferences
             get { return values.PlaySoundNotifications; }
             set { values.PlaySoundNotifications = value; }
         }
+
+        public bool ShowRemainingTimeOnTray
+        {
+            get { return values.ShowRemainingTimeOnTray ?? DefaultValues.ShowRemainingTimeOnTray.GetValueOrDefault(); }
+            set { values.ShowRemainingTimeOnTray = value; }
+        }
         
         public bool AutoUpdate
         {
@@ -120,6 +127,7 @@ namespace Tomighty.Windows.Preferences
             [DataMember] public int MaxPomodoroCount { get; set; }
             [DataMember] public bool ShowToastNotifications { get; set; }
             [DataMember] public bool PlaySoundNotifications { get; set; }
+            [DataMember] public bool? ShowRemainingTimeOnTray { get; set; }
             [DataMember] public bool AutoUpdate { get; set; }
         }
     }
