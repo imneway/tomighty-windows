@@ -25,12 +25,12 @@ namespace Tomighty.Windows.Timer
 
         private const int WM_NCLBUTTONDOWN = 0x00A1;
         private const int HTCAPTION = 0x0002;
-        private const int CompactWidth = 260;
-        private const int CompactHeight = 178;
+        private const int CompactWidth = 280;
+        private const int CompactHeight = 140;
         private const int CompactPadding = 16;
         private const int TitleHeight = 26;
         private const int DropDownSize = 30;
-        private const int TimeTop = 42;
+        private const int TimeTop = 44;
         private const int TimeHeight = 76;
         private const int ActionButtonHeight = 34;
         private const int ActionButtonCornerRadius = 4;
@@ -40,6 +40,7 @@ namespace Tomighty.Windows.Timer
         private bool closeButtonPressed;
         private string titleText = "Title";
         private string timeText = "--:--";
+        private float layoutScale = 1f;
 
         private readonly Action<string> UpdateTimeDisplayDelegate;
         private readonly Action<string> UpdateTitleDelegate;
@@ -124,6 +125,7 @@ namespace Tomighty.Windows.Timer
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
+            layoutScale = GetCurrentDpiScale();
             ApplyCompactFonts();
             ApplyCompactWindowSize();
             UpdateCompactBounds();
@@ -139,17 +141,16 @@ namespace Tomighty.Windows.Timer
 
         private void ApplyCompactWindowSize()
         {
-            var compactSize = new Size(CompactWidth, CompactHeight);
+            var compactSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(CompactHeight));
             if (ClientSize != compactSize)
                 ClientSize = compactSize;
         }
 
         private void ApplyCompactFonts()
         {
-            var fontScale = 1f / GetCurrentDpiScale();
-            titleLabel.Font = ModernTheme.SemiBoldTextFont(11f * fontScale);
-            timeLabel.Font = ModernTheme.DisplayFont(46f * fontScale);
-            timerButton.Font = ModernTheme.SemiBoldTextFont(9.5f * fontScale);
+            titleLabel.Font = ModernTheme.SemiBoldTextFont(11f);
+            timeLabel.Font = ModernTheme.DisplayMediumFont(46f);
+            timerButton.Font = ModernTheme.SemiBoldTextFont(9.5f);
         }
 
         private void UpdateCompactBounds()
@@ -261,22 +262,32 @@ namespace Tomighty.Windows.Timer
 
         private Rectangle GetDropDownBounds()
         {
-            return new Rectangle(ClientSize.Width - CompactPadding - DropDownSize, CompactPadding, DropDownSize, TitleHeight);
+            var padding = ScaleLayout(CompactPadding);
+            return new Rectangle(ClientSize.Width - padding - ScaleLayout(DropDownSize), padding, ScaleLayout(DropDownSize), ScaleLayout(TitleHeight));
         }
 
         private Rectangle GetTitleBounds()
         {
-            return new Rectangle(CompactPadding, CompactPadding, ClientSize.Width - CompactPadding * 2, TitleHeight);
+            var padding = ScaleLayout(CompactPadding);
+            return new Rectangle(padding, padding, ClientSize.Width - padding * 2, ScaleLayout(TitleHeight));
         }
 
         private Rectangle GetTimeBounds()
         {
-            return new Rectangle(CompactPadding, TimeTop, ClientSize.Width - CompactPadding * 2, TimeHeight);
+            var padding = ScaleLayout(CompactPadding);
+            return new Rectangle(padding, ScaleLayout(TimeTop), ClientSize.Width - padding * 2, ScaleLayout(TimeHeight));
         }
 
         private Rectangle GetActionButtonBounds()
         {
-            return new Rectangle(CompactPadding, ClientSize.Height - CompactPadding - ActionButtonHeight, ClientSize.Width - CompactPadding * 2, ActionButtonHeight);
+            var padding = ScaleLayout(CompactPadding);
+            var height = ScaleLayout(ActionButtonHeight);
+            return new Rectangle(padding, ClientSize.Height - padding - height, ClientSize.Width - padding * 2, height);
+        }
+
+        private int ScaleLayout(int value)
+        {
+            return (int)Math.Round(value * layoutScale);
         }
 
         private float GetCurrentDpiScale()
@@ -300,12 +311,13 @@ namespace Tomighty.Windows.Timer
 
         private void DrawDropDownArrow(Graphics graphics, Rectangle bounds)
         {
-            const float width = 8f;
-            const float height = 4f;
+            var scale = graphics.DpiX / 96f;
+            var width = 8f * scale;
+            var height = 4f * scale;
             var centerX = bounds.Left + bounds.Width / 2f;
-            var centerY = bounds.Top + bounds.Height / 2f + 1f;
+            var centerY = bounds.Top + bounds.Height / 2f + 1f * scale;
 
-            using (var pen = new Pen(ModernTheme.TimerTextColor, 1.6f))
+            using (var pen = new Pen(ModernTheme.TimerTextColor, Math.Max(1.4f, 1.6f * scale)))
             {
                 pen.StartCap = LineCap.Round;
                 pen.EndCap = LineCap.Round;
@@ -451,12 +463,13 @@ namespace Tomighty.Windows.Timer
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 PaintParentBackground(e);
 
-                const float width = 8f;
-                const float height = 4f;
+                var scale = e.Graphics.DpiX / 96f;
+                var width = 8f * scale;
+                var height = 4f * scale;
                 var centerX = ClientRectangle.Left + ClientRectangle.Width / 2f;
-                var centerY = ClientRectangle.Top + ClientRectangle.Height / 2f + 1f;
+                var centerY = ClientRectangle.Top + ClientRectangle.Height / 2f + 1f * scale;
 
-                using (var pen = new Pen(ModernTheme.TimerTextColor, 1.6f))
+                using (var pen = new Pen(ModernTheme.TimerTextColor, Math.Max(1.4f, 1.6f * scale)))
                 {
                     pen.StartCap = LineCap.Round;
                     pen.EndCap = LineCap.Round;
@@ -584,7 +597,7 @@ namespace Tomighty.Windows.Timer
                         ? ModernTheme.ActionButtonHoverBackColor
                         : ModernTheme.ActionButtonBackColor;
 
-                var radius = Math.Max(1f, ActionButtonCornerRadius);
+                var radius = Math.Max(1f, ActionButtonCornerRadius * graphics.DpiX / 96f);
                 var pathBounds = new RectangleF(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
 
                 using (var path = CreateRoundedRectangle(pathBounds, radius))

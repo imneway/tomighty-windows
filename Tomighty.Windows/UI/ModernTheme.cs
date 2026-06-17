@@ -18,10 +18,12 @@ namespace Tomighty.Windows.UI
         private const string TextFontName = "Segoe UI";
         private const string TextSemiBoldFontName = "Segoe UI Semibold";
         private const string TimerDisplayFontName = "OPPO Sans 4.0 EN";
+        private const string TimerDisplayMediumFontName = "OPPO Sans 4.0 EN Medium_opsz40";
         private static readonly Color CommandPaletteDarkBaseColor = Color.FromArgb(32, 32, 32);
         private static readonly Color CommandPaletteLightBaseColor = Color.FromArgb(243, 243, 243);
         private static readonly Color TomatoRed = Color.FromArgb(197, 47, 61);
         private static readonly Lazy<bool> TimerDisplayFontAvailable = new Lazy<bool>(() => IsFontInstalled(TimerDisplayFontName));
+        private static readonly Lazy<bool> TimerDisplayMediumFontAvailable = new Lazy<bool>(() => IsFontInstalled(TimerDisplayMediumFontName));
 
         public static bool IsLightTheme => ReadAppsUseLightTheme();
         public static bool IsDarkTheme => !IsLightTheme;
@@ -49,6 +51,7 @@ namespace Tomighty.Windows.UI
         public static Color MenuBackColor => IsLightTheme ? SystemColors.Menu : Color.FromArgb(32, 32, 32);
         public static Color MenuTextColor => IsLightTheme ? SystemColors.MenuText : TextColor;
         public static bool IsTimerDisplayFontAvailable => TimerDisplayFontAvailable.Value;
+        public static bool IsTimerDisplayMediumFontAvailable => TimerDisplayMediumFontAvailable.Value;
 
         public static Font TextFont(float size = 9f, FontStyle style = FontStyle.Regular)
         {
@@ -64,6 +67,14 @@ namespace Tomighty.Windows.UI
         {
             var fontName = IsTimerDisplayFontAvailable ? TimerDisplayFontName : TextFontName;
             return new Font(fontName, size, style, GraphicsUnit.Point);
+        }
+
+        public static Font DisplayMediumFont(float size)
+        {
+            if (IsTimerDisplayMediumFontAvailable)
+                return new Font(TimerDisplayMediumFontName, size, FontStyle.Regular, GraphicsUnit.Point);
+
+            return DisplayFont(size);
         }
 
         public static void ApplyMicaDialog(Form form)
