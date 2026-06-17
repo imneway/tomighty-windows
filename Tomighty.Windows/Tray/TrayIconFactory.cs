@@ -47,7 +47,7 @@ namespace Tomighty.Windows.Tray
 
                 graphics.DrawRectangle(pen, 4, 5, 24, 22);
 
-                var text = FormatRemainingMinutes(remainingTime);
+                var text = FormatRemainingTime(remainingTime);
                 using (var font = CreateCountdownFont(graphics, text))
                 {
                     format.Alignment = StringAlignment.Center;
@@ -104,9 +104,12 @@ namespace Tomighty.Windows.Tray
             }
         }
 
-        private static string FormatRemainingMinutes(Duration remainingTime)
+        private static string FormatRemainingTime(Duration remainingTime)
         {
-            var minutes = remainingTime.Seconds <= 0 ? 0 : (remainingTime.Seconds + 59) / 60;
+            if (remainingTime.Seconds < 60)
+                return Math.Max(0, remainingTime.Seconds).ToString();
+
+            var minutes = (remainingTime.Seconds + 59) / 60;
             return Math.Min(99, minutes).ToString();
         }
 
@@ -115,7 +118,7 @@ namespace Tomighty.Windows.Tray
             var fontSize = text.Length > 1 ? 14f : 16f;
             while (fontSize >= 9f)
             {
-                var font = new Font("Segoe UI", fontSize, FontStyle.Bold, GraphicsUnit.Pixel);
+                var font = new Font("Segoe UI", fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
                 var size = graphics.MeasureString(text, font);
                 if (size.Width <= 21f && size.Height <= 18f)
                     return font;
@@ -124,7 +127,7 @@ namespace Tomighty.Windows.Tray
                 fontSize -= 1f;
             }
 
-            return new Font("Segoe UI", 9f, FontStyle.Bold, GraphicsUnit.Pixel);
+            return new Font("Segoe UI", 9f, FontStyle.Regular, GraphicsUnit.Pixel);
         }
 
         private static Icon CreateIcon(Bitmap bitmap)
