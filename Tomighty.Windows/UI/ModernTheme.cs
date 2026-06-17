@@ -47,8 +47,6 @@ namespace Tomighty.Windows.UI
         public static Color BorderColor => IsLightTheme ? Color.FromArgb(138, 0, 0, 0) : Color.FromArgb(118, 255, 255, 255);
         public static Color InnerHighlightColor => IsLightTheme ? Color.FromArgb(120, 255, 255, 255) : Color.FromArgb(42, 255, 255, 255);
         public static Color ActionButtonBackColor => IsTimerWindowLightTheme ? TomatoRed : Color.FromArgb(69, 0, 0);
-        public static Color ActionButtonHoverBackColor => IsTimerWindowLightTheme ? Color.FromArgb(214, 62, 76) : Color.FromArgb(87, 18, 18);
-        public static Color ActionButtonPressedBackColor => IsTimerWindowLightTheme ? Color.FromArgb(160, 36, 49) : Color.FromArgb(51, 0, 0);
         public static Color BreakActionButtonBackColor => IsTimerWindowLightTheme ? Color.FromArgb(0, 155, 59) : Color.FromArgb(2, 53, 23);
         public static Color NeutralActionButtonBackColor => IsTimerWindowLightTheme ? Color.FromArgb(133, 137, 145) : Color.FromArgb(47, 48, 50);
         public static Color ActionButtonBorderColor => IsTimerWindowLightTheme ? Color.FromArgb(31, 0, 0, 0) : Color.FromArgb(31, 255, 255, 255);

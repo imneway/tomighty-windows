@@ -610,11 +610,7 @@ namespace Tomighty.Windows.Timer
 
         private static void DrawActionButtonSurface(Graphics graphics, Rectangle bounds, PushButtonState state, Color normalColor)
         {
-            var fill = state == PushButtonState.Pressed
-                ? AdjustColor(normalColor, ActionButtonPressedColorOffset)
-                : state == PushButtonState.Hot
-                    ? AdjustColor(normalColor, ActionButtonHoverColorOffset)
-                    : normalColor;
+            var fill = ResolveActionButtonFillColor(state, normalColor);
 
             var scale = graphics.DpiX / 96f;
             var radius = Math.Max(1f, ActionButtonCornerRadius * scale);
@@ -634,6 +630,17 @@ namespace Tomighty.Windows.Timer
                 graphics.FillPath(brush, path);
                 graphics.DrawPath(border, borderPath);
             }
+        }
+
+        private static Color ResolveActionButtonFillColor(PushButtonState state, Color normalColor)
+        {
+            if (state == PushButtonState.Pressed)
+                return AdjustColor(normalColor, ActionButtonPressedColorOffset);
+
+            if (state == PushButtonState.Hot)
+                return AdjustColor(normalColor, ActionButtonHoverColorOffset);
+
+            return normalColor;
         }
 
         private static Color AdjustColor(Color color, int offset)
@@ -1018,11 +1025,7 @@ namespace Tomighty.Windows.Timer
 
             private static void DrawButtonSurface(Graphics graphics, Rectangle bounds, PushButtonState state)
             {
-                var fill = state == PushButtonState.Pressed
-                    ? ModernTheme.ActionButtonPressedBackColor
-                    : state == PushButtonState.Hot
-                        ? ModernTheme.ActionButtonHoverBackColor
-                        : ModernTheme.ActionButtonBackColor;
+                var fill = ResolveActionButtonFillColor(state, ModernTheme.ActionButtonBackColor);
 
                 var scale = graphics.DpiX / 96f;
                 var radius = GetCornerRadius(graphics);
