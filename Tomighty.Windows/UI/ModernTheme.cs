@@ -16,7 +16,7 @@ namespace Tomighty.Windows.UI
     internal static class ModernTheme
     {
         private const string TextFontName = "Segoe UI";
-        private const string TextMediumFontName = "Segoe UI Variable Text Semibold";
+        private const string TextMediumFontName = "Segoe UI Semibold";
         private const string TextSemiBoldFontName = "Segoe UI Semibold";
         private const string TimerDisplayFontName = "OPPO Sans 4.0 EN";
         private const string TimerDisplayMediumFontName = "OPPO Sans 4.0 EN Medium_opsz40";

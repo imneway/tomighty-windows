@@ -551,7 +551,7 @@ namespace Tomighty.Windows.Timer
 
             protected override void OnPaint(PaintEventArgs e)
             {
-                e.Graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
                 e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
                 e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
@@ -561,8 +561,14 @@ namespace Tomighty.Windows.Timer
                 DrawButtonSurface(e.Graphics, bounds, state);
 
                 var textColor = Enabled ? ModernTheme.ActionButtonTextColor : ModernTheme.SecondaryTextColor;
-                var textFlags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis | TextFormatFlags.PreserveGraphicsClipping;
-                TextRenderer.DrawText(e.Graphics, Text, Font, bounds, textColor, textFlags);
+                using (var brush = new SolidBrush(textColor))
+                using (var format = new StringFormat(StringFormatFlags.NoWrap))
+                {
+                    format.Alignment = StringAlignment.Center;
+                    format.LineAlignment = StringAlignment.Center;
+                    format.Trimming = StringTrimming.EllipsisCharacter;
+                    e.Graphics.DrawString(Text, Font, brush, bounds, format);
+                }
 
                 if (Focused && ShowFocusCues)
                 {
