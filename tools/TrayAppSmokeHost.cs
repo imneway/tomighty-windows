@@ -16,12 +16,13 @@ namespace Tomighty.Tools
         [STAThread]
         private static int Main(string[] args)
         {
-            if (args.Length != 2 || !int.TryParse(args[0], out processId))
+            if ((args.Length != 2 && args.Length != 3) || !int.TryParse(args[0], out processId))
             {
-                Console.Error.WriteLine("Usage: TrayAppSmokeHost.exe <tomighty-process-id> <output-directory>");
+                Console.Error.WriteLine("Usage: TrayAppSmokeHost.exe <tomighty-process-id> <output-directory> [start-only]");
                 return 2;
             }
 
+            var startOnly = args.Length == 3 && args[2] == "start-only";
             outputDirectory = args[1];
             System.IO.Directory.CreateDirectory(outputDirectory);
 
@@ -33,6 +34,9 @@ namespace Tomighty.Tools
             Thread.Sleep(1600);
             trayButton = WaitForTrayButton();
             CaptureElement(trayButton, "actual-countdown-tray.png");
+
+            if (startOnly)
+                return 0;
 
             Thread.Sleep(5000);
             var timerWindow = WaitForTomightyWindow(4000);
