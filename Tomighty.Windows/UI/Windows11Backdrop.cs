@@ -25,12 +25,12 @@ namespace Tomighty.Windows.UI
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
         private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
-        private const int DWMWA_REDIRECTIONBITMAP_ALPHA = 39;
 
         private const int DWMWCP_ROUND = 2;
         private static readonly System.Version Windows11Build = new System.Version(10, 0, 22000);
+        private static readonly Lazy<System.Version> CurrentWindowsVersion = new Lazy<System.Version>(ReadWindowsVersion);
 
-        public static bool IsSupported => Environment.OSVersion.Version.CompareTo(Windows11Build) >= 0;
+        public static bool IsSupported => CurrentWindowsVersion.Value.CompareTo(Windows11Build) >= 0;
 
         public static void ApplyMica(Form form)
         {
@@ -96,14 +96,14 @@ namespace Tomighty.Windows.UI
             var cornerPreference = DWMWCP_ROUND;
             TrySetAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, cornerPreference);
 
-            var useRedirectionAlpha = useAcrylicAccent ? 1 : 0;
-            TrySetAttribute(handle, DWMWA_REDIRECTIONBITMAP_ALPHA, useRedirectionAlpha);
-
             var backdrop = (int)material;
             TrySetAttribute(handle, DWMWA_SYSTEMBACKDROP_TYPE, backdrop);
 
-            var margins = Margins.ExtendIntoClientArea;
-            DwmExtendFrameIntoClientArea(handle, ref margins);
+            if (!useAcrylicAccent)
+            {
+                var margins = Margins.ExtendIntoClientArea;
+                DwmExtendFrameIntoClientArea(handle, ref margins);
+            }
 
             if (useAcrylicAccent)
                 TrySetAcrylicAccent(handle, isDarkMode);
@@ -177,6 +177,28 @@ namespace Tomighty.Windows.UI
             return (alpha << 24) | (blue << 16) | (green << 8) | red;
         }
 
+        private static System.Version ReadWindowsVersion()
+        {
+            try
+            {
+                var versionInfo = new OsVersionInfoEx();
+                versionInfo.OSVersionInfoSize = Marshal.SizeOf(typeof(OsVersionInfoEx));
+
+                if (RtlGetVersion(ref versionInfo) == 0)
+                {
+                    return new System.Version(
+                        versionInfo.MajorVersion,
+                        versionInfo.MinorVersion,
+                        versionInfo.BuildNumber);
+                }
+            }
+            catch
+            {
+            }
+
+            return Environment.OSVersion.Version;
+        }
+
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
 
@@ -185,6 +207,9 @@ namespace Tomighty.Windows.UI
 
         [DllImport("user32.dll")]
         private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
+
+        [DllImport("ntdll.dll")]
+        private static extern int RtlGetVersion(ref OsVersionInfoEx versionInfo);
 
         private const int WcaAccentPolicy = 19;
         private const int AccentEnableAcrylicBlurBehind = 4;
@@ -204,6 +229,23 @@ namespace Tomighty.Windows.UI
             public int Attribute;
             public IntPtr Data;
             public int SizeOfData;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct OsVersionInfoEx
+        {
+            public int OSVersionInfoSize;
+            public int MajorVersion;
+            public int MinorVersion;
+            public int BuildNumber;
+            public int PlatformId;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string CsdVersion;
+            public ushort ServicePackMajor;
+            public ushort ServicePackMinor;
+            public ushort SuiteMask;
+            public byte ProductType;
+            public byte Reserved;
         }
 
         [StructLayout(LayoutKind.Sequential)]

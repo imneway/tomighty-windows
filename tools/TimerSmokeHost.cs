@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -23,14 +24,24 @@ namespace Tomighty.Tools
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            using (var backdrop = new ProbeBackdropForm())
             using (var form = new TimerWindow())
             {
+                backdrop.Show();
+                Application.DoEvents();
+                Thread.Sleep(250);
+                Application.DoEvents();
+
                 form.UpdateTitle("Pomodoro");
                 form.UpdateTimeDisplay("25:00");
                 form.UpdateColorScheme(Color.FromArgb(197, 47, 61));
                 form.SetTimerAction("Interrupt", () => { });
                 form.StartPosition = FormStartPosition.Manual;
+                if (!form.IsHandleCreated && form.Handle == IntPtr.Zero)
+                    return 1;
+
                 form.Location = new Point(80, 80);
+                form.RefreshAcrylicBackdrop();
                 form.Show();
 
                 Application.DoEvents();
@@ -39,9 +50,41 @@ namespace Tomighty.Tools
 
                 CaptureWindow(form.Handle, args[0]);
                 form.Close();
+                backdrop.Close();
             }
 
             return 0;
+        }
+
+        private sealed class ProbeBackdropForm : Form
+        {
+            public ProbeBackdropForm()
+            {
+                StartPosition = FormStartPosition.Manual;
+                FormBorderStyle = FormBorderStyle.None;
+                ShowInTaskbar = false;
+                Bounds = new Rectangle(40, 40, 520, 360);
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                base.OnPaint(e);
+
+                using (var brush = new LinearGradientBrush(ClientRectangle, Color.FromArgb(32, 126, 235), Color.FromArgb(236, 242, 248), 0f))
+                {
+                    e.Graphics.FillRectangle(brush, ClientRectangle);
+                }
+
+                using (var brush = new SolidBrush(Color.FromArgb(120, 100, 90, 220)))
+                {
+                    e.Graphics.FillEllipse(brush, 260, -70, 260, 210);
+                }
+
+                using (var brush = new SolidBrush(Color.FromArgb(130, 197, 47, 61)))
+                {
+                    e.Graphics.FillRectangle(brush, 0, 240, 520, 70);
+                }
+            }
         }
 
         private static void CaptureWindow(IntPtr handle, string output)

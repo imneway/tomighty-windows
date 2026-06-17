@@ -8,6 +8,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -42,6 +43,7 @@ namespace Tomighty.Windows.Timer
         private string titleText = "Title";
         private string timeText = "--:--";
         private float layoutScale = 1f;
+        private Bitmap acrylicBackdrop;
 
         private readonly Action<string> UpdateTimeDisplayDelegate;
         private readonly Action<string> UpdateTitleDelegate;
@@ -140,6 +142,13 @@ namespace Tomighty.Windows.Timer
                 UpdateCompactBounds();
         }
 
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            acrylicBackdrop?.Dispose();
+            acrylicBackdrop = null;
+            base.OnFormClosed(e);
+        }
+
         private void ApplyCompactWindowSize()
         {
             var compactSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(CompactHeight));
@@ -170,7 +179,33 @@ namespace Tomighty.Windows.Timer
         public void Show(Point location)
         {
             Location = location;
+            RefreshAcrylicBackdrop();
             Show();
+        }
+
+        public void RefreshAcrylicBackdrop()
+        {
+            if (!IsHandleCreated)
+            {
+                if (Handle == IntPtr.Zero)
+                    return;
+            }
+
+            if (ClientSize.Width <= 0 || ClientSize.Height <= 0)
+                return;
+
+            var bounds = Bounds;
+            var captured = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
+
+            using (var graphics = Graphics.FromImage(captured))
+            {
+                graphics.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size, CopyPixelOperation.SourceCopy);
+            }
+
+            var oldBackdrop = acrylicBackdrop;
+            acrylicBackdrop = captured;
+            oldBackdrop?.Dispose();
+            Invalidate();
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
@@ -215,10 +250,7 @@ namespace Tomighty.Windows.Timer
 
             if (Windows11Backdrop.IsSupported)
             {
-                using (var brush = new SolidBrush(ModernTheme.TimerWindowTintColor))
-                {
-                    e.Graphics.FillRectangle(brush, ClientRectangle);
-                }
+                DrawAcrylicMaterial(e.Graphics);
             }
             else
             {
@@ -258,6 +290,65 @@ namespace Tomighty.Windows.Timer
                 format.LineAlignment = lineAlignment;
                 format.Trimming = StringTrimming.EllipsisCharacter;
                 graphics.DrawString(text, font, brush, bounds, format);
+            }
+        }
+
+        private void DrawAcrylicMaterial(Graphics graphics)
+        {
+            if (acrylicBackdrop == null)
+            {
+                graphics.Clear(ModernTheme.TimerWindowBackColor);
+                return;
+            }
+
+            DrawBlurredBackdrop(graphics, ClientRectangle);
+
+            using (var brush = new SolidBrush(ModernTheme.TimerWindowAcrylicVeilColor))
+            {
+                graphics.FillRectangle(brush, ClientRectangle);
+            }
+
+            DrawAcrylicNoise(graphics);
+        }
+
+        private void DrawBlurredBackdrop(Graphics graphics, Rectangle bounds)
+        {
+            var blurWidth = Math.Max(1, bounds.Width / 22);
+            var blurHeight = Math.Max(1, bounds.Height / 22);
+
+            using (var small = new Bitmap(blurWidth, blurHeight, PixelFormat.Format32bppArgb))
+            {
+                using (var blurGraphics = Graphics.FromImage(small))
+                {
+                    blurGraphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    blurGraphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                    blurGraphics.DrawImage(acrylicBackdrop, new Rectangle(0, 0, blurWidth, blurHeight));
+                }
+
+                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                graphics.DrawImage(small, bounds);
+            }
+        }
+
+        private void DrawAcrylicNoise(Graphics graphics)
+        {
+            var step = Math.Max(2, ScaleLayout(2));
+
+            using (var lightBrush = new SolidBrush(Color.FromArgb(10, 255, 255, 255)))
+            using (var darkBrush = new SolidBrush(Color.FromArgb(5, 0, 0, 0)))
+            {
+                for (var y = 1; y < ClientSize.Height; y += step)
+                {
+                    for (var x = 1; x < ClientSize.Width; x += step)
+                    {
+                        var hash = (x * 17 + y * 31) & 15;
+                        if (hash == 0)
+                            graphics.FillRectangle(lightBrush, x, y, 1, 1);
+                        else if (hash == 7)
+                            graphics.FillRectangle(darkBrush, x, y, 1, 1);
+                    }
+                }
             }
         }
 

@@ -82,6 +82,9 @@ namespace Tomighty.Windows.Timer
             }
             else
             {
+                if (!window.IsHandleCreated && window.Handle == IntPtr.Zero)
+                    return;
+
                 Point location = GetLocationNearTrayIcon(approximateLocation);
                 window.Show(location);
 

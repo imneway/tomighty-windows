@@ -28,9 +28,13 @@ namespace Tomighty.Tools
                 form.UpdateColorScheme(Color.FromArgb(197, 47, 61));
                 form.SetTimerAction("Interrupt", () => { });
                 form.StartPosition = FormStartPosition.Manual;
+                if (!form.IsHandleCreated && form.Handle == IntPtr.Zero)
+                    return 1;
+
+                form.Location = CenterOnScreen(form, screen);
+                form.RefreshAcrylicBackdrop();
                 form.Shown += (sender, eventArgs) =>
                 {
-                    form.Location = CenterOnScreen(form, screen);
                     WriteProbe(probePath, form, screen);
                     form.Activate();
                 };
