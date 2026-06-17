@@ -25,14 +25,14 @@ namespace Tomighty.Windows.Timer
 
         private const int WM_NCLBUTTONDOWN = 0x00A1;
         private const int HTCAPTION = 0x0002;
-        private const int CompactWidth = 220;
-        private const int CompactHeight = 150;
-        private const int CompactPadding = 8;
-        private const int TitleHeight = 24;
-        private const int DropDownSize = 28;
-        private const int TimeTop = 35;
-        private const int TimeHeight = 66;
-        private const int ActionButtonHeight = 32;
+        private const int CompactWidth = 260;
+        private const int CompactHeight = 178;
+        private const int CompactPadding = 16;
+        private const int TitleHeight = 26;
+        private const int DropDownSize = 30;
+        private const int TimeTop = 42;
+        private const int TimeHeight = 76;
+        private const int ActionButtonHeight = 34;
         private const int ActionButtonCornerRadius = 4;
 
         private Action currentTimerAction;
@@ -59,8 +59,8 @@ namespace Tomighty.Windows.Timer
 
             Icon = Properties.Resources.icon_tomato_red;
 
-            titleLabel.Font = ModernTheme.SemiBoldTextFont(10.5f);
-            timeLabel.Font = ModernTheme.DisplayFont(44f);
+            titleLabel.Font = ModernTheme.SemiBoldTextFont(11f);
+            timeLabel.Font = ModernTheme.DisplayFont(46f);
             timerButton.Font = ModernTheme.SemiBoldTextFont(9.5f);
             ApplyCompactWindowSize();
             UpdateCompactBounds();
