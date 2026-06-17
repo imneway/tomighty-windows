@@ -40,6 +40,8 @@ namespace Tomighty.Windows.Timer
         private const int CompactMessageHeight = CompactPadding + MessageTitleHeight + ActionButtonHeight + CompactPadding;
         private const int WindowCornerRadius = 20;
         private const int ActionButtonCornerRadius = 8;
+        private const int ActionButtonHoverColorOffset = 12;
+        private const int ActionButtonPressedColorOffset = -12;
 
         private enum ActionButtonTone
         {
@@ -609,9 +611,9 @@ namespace Tomighty.Windows.Timer
         private static void DrawActionButtonSurface(Graphics graphics, Rectangle bounds, PushButtonState state, Color normalColor)
         {
             var fill = state == PushButtonState.Pressed
-                ? AdjustColor(normalColor, -36)
+                ? AdjustColor(normalColor, ActionButtonPressedColorOffset)
                 : state == PushButtonState.Hot
-                    ? AdjustColor(normalColor, 18)
+                    ? AdjustColor(normalColor, ActionButtonHoverColorOffset)
                     : normalColor;
 
             var scale = graphics.DpiX / 96f;
