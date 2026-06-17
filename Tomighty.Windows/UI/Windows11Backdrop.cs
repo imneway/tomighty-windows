@@ -49,9 +49,9 @@ namespace Tomighty.Windows.UI
             Apply(form, BackdropMaterial.Acrylic, true);
         }
 
-        public static void ApplyLightAcrylic(Form form)
+        public static void ApplyAcrylic(Form form, bool darkMode)
         {
-            Apply(form, BackdropMaterial.Acrylic, true, false);
+            Apply(form, BackdropMaterial.Acrylic, true, darkMode);
         }
 
         public static void ApplyAcrylic(ToolStripDropDown dropDown)
@@ -95,12 +95,12 @@ namespace Tomighty.Windows.UI
             Apply(form.Handle, material, material == BackdropMaterial.Acrylic);
         }
 
-        public static void RefreshLightAcrylic(Form form)
+        public static void RefreshAcrylic(Form form, bool darkMode)
         {
             if (form == null || !form.IsHandleCreated)
                 return;
 
-            Apply(form.Handle, BackdropMaterial.Acrylic, true, false);
+            Apply(form.Handle, BackdropMaterial.Acrylic, true, darkMode);
         }
 
         public static void SuppressBorder(Form form)

@@ -1,7 +1,9 @@
 param (
     [string]$Configuration = "Debug",
     [ValidateSet("primary", "secondary", "small")]
-    [string]$Screen = "primary"
+    [string]$Screen = "primary",
+    [ValidateSet("system", "light", "dark")]
+    [string]$Theme = "system"
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,7 +45,7 @@ Copy-Item -Path $hostConfig -Destination "$hostExe.config" -Force
 
 Push-Location $appOutput
 try {
-    Start-Process -FilePath $hostExe -ArgumentList @($Screen, "`"$probeOutput`"") -WorkingDirectory $appOutput
+    Start-Process -FilePath $hostExe -ArgumentList @($Screen, "`"$probeOutput`"", $Theme) -WorkingDirectory $appOutput
 }
 finally {
     Pop-Location

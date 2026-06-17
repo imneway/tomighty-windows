@@ -44,20 +44,43 @@ namespace Tomighty.Tools
                 Thread.Sleep(450);
                 Application.DoEvents();
 
-                CaptureStates(args[0], new Point(80, 80), backdrop);
-                CapturePresenterDrivenStates(
-                    Path.Combine(Path.GetDirectoryName(args[0]), "timer-window-driven.png"),
-                    new Point(80, 80),
+                CaptureTheme(args[0], true, "timer-window-states", "timer-window-driven-states", "timer-window-driven.png", backdrop);
+                CaptureTheme(
+                    Path.Combine(Path.GetDirectoryName(args[0]), "timer-window-smoke-dark.png"),
+                    false,
+                    "timer-window-states-dark",
+                    "timer-window-driven-states-dark",
+                    "timer-window-driven-dark.png",
                     backdrop);
+                SetThemeOverride(null);
                 backdrop.Close();
             }
 
             return 0;
         }
 
-        private static void CaptureStates(string primaryOutput, Point location, IWin32Window owner)
+        private static void CaptureTheme(string primaryOutput, bool lightTheme, string statesDirectoryName, string drivenDirectoryName, string drivenFileName, IWin32Window owner)
         {
-            var outputDirectory = Path.Combine(Path.GetDirectoryName(primaryOutput), "timer-window-states");
+            SetThemeOverride(lightTheme);
+
+            CaptureStates(primaryOutput, statesDirectoryName, new Point(80, 80), owner);
+            CapturePresenterDrivenStates(
+                Path.Combine(Path.GetDirectoryName(primaryOutput), drivenFileName),
+                drivenDirectoryName,
+                new Point(80, 80),
+                owner);
+        }
+
+        private static void SetThemeOverride(bool? lightTheme)
+        {
+            var themeType = typeof(TimerWindow).Assembly.GetType("Tomighty.Windows.UI.ModernTheme", true);
+            var method = themeType.GetMethod("SetThemeOverrideForTooling", BindingFlags.Static | BindingFlags.NonPublic);
+            method.Invoke(null, new object[] { lightTheme });
+        }
+
+        private static void CaptureStates(string primaryOutput, string outputDirectoryName, Point location, IWin32Window owner)
+        {
+            var outputDirectory = Path.Combine(Path.GetDirectoryName(primaryOutput), outputDirectoryName);
             Directory.CreateDirectory(outputDirectory);
             foreach (var stalePng in Directory.GetFiles(outputDirectory, "*.png"))
                 File.Delete(stalePng);
@@ -109,9 +132,9 @@ namespace Tomighty.Tools
             }
         }
 
-        private static void CapturePresenterDrivenStates(string primaryOutput, Point location, IWin32Window owner)
+        private static void CapturePresenterDrivenStates(string primaryOutput, string outputDirectoryName, Point location, IWin32Window owner)
         {
-            var outputDirectory = Path.Combine(Path.GetDirectoryName(primaryOutput), "timer-window-driven-states");
+            var outputDirectory = Path.Combine(Path.GetDirectoryName(primaryOutput), outputDirectoryName);
             Directory.CreateDirectory(outputDirectory);
             foreach (var stalePng in Directory.GetFiles(outputDirectory, "*.png"))
                 File.Delete(stalePng);
@@ -262,6 +285,8 @@ namespace Tomighty.Tools
             AssertEqual("title", title, GetPrivateField<string>(window, "titleText"));
             AssertEqual("timeDisplayVisible", showTime, GetPrivateField<bool>(window, "timeDisplayVisible"));
             AssertEqual("messageText", messageText, GetPrivateField<string>(window, "messageText"));
+            AssertEqual("timerWindowForeColor", GetModernThemeColor("TimerTextColor").ToArgb(), window.ForeColor.ToArgb());
+            AssertEqual("timerWindowBackColor", GetModernThemeColor("TimerWindowBackColor").ToArgb(), window.BackColor.ToArgb());
             AssertEqual("primaryActionText", primaryActionText, GetPrivateField<string>(window, "primaryActionText"));
             AssertEqual("primaryActionButtonColor", primaryActionColor.ToArgb(), GetPrivateField<Color>(window, "primaryActionButtonColor").ToArgb());
             AssertEqual("secondaryActionText", secondaryActionText, GetPrivateField<string>(window, "secondaryActionText"));
@@ -291,6 +316,12 @@ namespace Tomighty.Tools
         private static T GetPrivateField<T>(object instance, string name)
         {
             return (T)instance.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(instance);
+        }
+
+        private static Color GetModernThemeColor(string propertyName)
+        {
+            var themeType = typeof(TimerWindow).Assembly.GetType("Tomighty.Windows.UI.ModernTheme", true);
+            return (Color)themeType.GetProperty(propertyName, BindingFlags.Static | BindingFlags.Public).GetValue(null, null);
         }
 
         private static void AssertEqual<T>(string name, T expected, T actual)

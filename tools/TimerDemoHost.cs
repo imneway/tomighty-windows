@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Tomighty.Windows.Timer;
@@ -19,6 +20,7 @@ namespace Tomighty.Tools
 
             var screen = SelectScreen(args.Length > 0 ? args[0] : "primary");
             var probePath = args.Length > 1 ? args[1] : string.Empty;
+            SetThemeOverride(args.Length > 2 ? args[2] : "system");
 
             using (var form = new TimerWindow())
             {
@@ -56,6 +58,19 @@ namespace Tomighty.Tools
             }
 
             return Screen.PrimaryScreen;
+        }
+
+        private static void SetThemeOverride(string theme)
+        {
+            bool? lightTheme = null;
+            if (string.Equals(theme, "light", StringComparison.OrdinalIgnoreCase))
+                lightTheme = true;
+            else if (string.Equals(theme, "dark", StringComparison.OrdinalIgnoreCase))
+                lightTheme = false;
+
+            var themeType = typeof(TimerWindow).Assembly.GetType("Tomighty.Windows.UI.ModernTheme", true);
+            var method = themeType.GetMethod("SetThemeOverrideForTooling", BindingFlags.Static | BindingFlags.NonPublic);
+            method.Invoke(null, new object[] { lightTheme });
         }
 
         private static Point CenterOnScreen(Form form, Screen screen)
