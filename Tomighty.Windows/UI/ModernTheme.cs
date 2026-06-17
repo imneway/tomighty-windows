@@ -32,7 +32,6 @@ namespace Tomighty.Windows.UI
 
         public static Color WindowBackColor => IsLightTheme ? CommandPaletteLightBaseColor : CommandPaletteDarkBaseColor;
         public static Color TimerWindowBackColor => WindowBackColor;
-        public static Color TimerWindowAcrylicVeilColor => IsLightTheme ? Color.FromArgb(168, 246, 246, 246) : Color.FromArgb(160, 32, 32, 32);
         public static Color MaterialLayerBackColor => IsLightTheme ? Color.FromArgb(160, 255, 255, 255) : Color.FromArgb(80, 32, 32, 32);
         public static Color MaterialLayerSecondaryBackColor => IsLightTheme ? Color.FromArgb(102, 255, 255, 255) : Color.FromArgb(36, 32, 32, 32);
         public static Color MaterialLayerHoverBackColor => IsLightTheme ? Color.FromArgb(190, 255, 255, 255) : Color.FromArgb(104, 48, 48, 48);

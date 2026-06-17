@@ -32,7 +32,6 @@ namespace Tomighty.Tools
                     return 1;
 
                 form.Location = CenterOnScreen(form, screen);
-                form.RefreshAcrylicBackdrop();
                 form.Shown += (sender, eventArgs) =>
                 {
                     WriteProbe(probePath, form, screen);

@@ -8,7 +8,6 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -35,7 +34,8 @@ namespace Tomighty.Windows.Timer
         private const int TimeTop = 48;
         private const int TimeHeight = 56;
         private const int ActionButtonHeight = 36;
-        private const int ActionButtonCornerRadius = 4;
+        private const int ActionButtonCornerRadius = 6;
+        private const int WindowCornerRadius = 10;
 
         private Action currentTimerAction;
         private bool pinned;
@@ -43,7 +43,6 @@ namespace Tomighty.Windows.Timer
         private string titleText = "Title";
         private string timeText = "--:--";
         private float layoutScale = 1f;
-        private Bitmap acrylicBackdrop;
 
         private readonly Action<string> UpdateTimeDisplayDelegate;
         private readonly Action<string> UpdateTitleDelegate;
@@ -137,16 +136,10 @@ namespace Tomighty.Windows.Timer
         protected override void OnClientSizeChanged(EventArgs e)
         {
             base.OnClientSizeChanged(e);
+            UpdateWindowRegion();
 
             if (IsHandleCreated)
                 UpdateCompactBounds();
-        }
-
-        protected override void OnFormClosed(FormClosedEventArgs e)
-        {
-            acrylicBackdrop?.Dispose();
-            acrylicBackdrop = null;
-            base.OnFormClosed(e);
         }
 
         private void ApplyCompactWindowSize()
@@ -154,6 +147,8 @@ namespace Tomighty.Windows.Timer
             var compactSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(CompactHeight));
             if (Size != compactSize)
                 Size = compactSize;
+
+            UpdateWindowRegion();
         }
 
         private void ApplyCompactFonts()
@@ -179,33 +174,7 @@ namespace Tomighty.Windows.Timer
         public void Show(Point location)
         {
             Location = location;
-            RefreshAcrylicBackdrop();
             Show();
-        }
-
-        public void RefreshAcrylicBackdrop()
-        {
-            if (!IsHandleCreated)
-            {
-                if (Handle == IntPtr.Zero)
-                    return;
-            }
-
-            if (ClientSize.Width <= 0 || ClientSize.Height <= 0)
-                return;
-
-            var bounds = Bounds;
-            var captured = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
-
-            using (var graphics = Graphics.FromImage(captured))
-            {
-                graphics.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size, CopyPixelOperation.SourceCopy);
-            }
-
-            var oldBackdrop = acrylicBackdrop;
-            acrylicBackdrop = captured;
-            oldBackdrop?.Dispose();
-            Invalidate();
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
@@ -248,24 +217,25 @@ namespace Tomighty.Windows.Timer
         {
             e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
 
-            if (Windows11Backdrop.IsSupported)
-            {
-                DrawAcrylicMaterial(e.Graphics);
-            }
-            else
+            if (!Windows11Backdrop.IsSupported)
             {
                 e.Graphics.Clear(ModernTheme.TimerWindowBackColor);
             }
 
+            var radius = ScaleLayout(WindowCornerRadius);
+            var borderBounds = new RectangleF(0.5f, 0.5f, ClientSize.Width - 1f, ClientSize.Height - 1f);
+
+            using (var path = CreateRoundedRectangle(borderBounds, radius))
             using (var pen = new Pen(ModernTheme.BorderColor))
             {
-                e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                e.Graphics.DrawPath(pen, path);
             }
 
+            var highlightBounds = RectangleF.Inflate(borderBounds, -1f, -1f);
             using (var pen = new Pen(ModernTheme.InnerHighlightColor))
+            using (var path = CreateRoundedRectangle(highlightBounds, Math.Max(1f, radius - 1f)))
             {
-                e.Graphics.DrawLine(pen, 1, 1, Width - 2, 1);
-                e.Graphics.DrawLine(pen, 1, 1, 1, Height - 2);
+                e.Graphics.DrawPath(pen, path);
             }
         }
 
@@ -290,65 +260,6 @@ namespace Tomighty.Windows.Timer
                 format.LineAlignment = lineAlignment;
                 format.Trimming = StringTrimming.EllipsisCharacter;
                 graphics.DrawString(text, font, brush, bounds, format);
-            }
-        }
-
-        private void DrawAcrylicMaterial(Graphics graphics)
-        {
-            if (acrylicBackdrop == null)
-            {
-                graphics.Clear(ModernTheme.TimerWindowBackColor);
-                return;
-            }
-
-            DrawBlurredBackdrop(graphics, ClientRectangle);
-
-            using (var brush = new SolidBrush(ModernTheme.TimerWindowAcrylicVeilColor))
-            {
-                graphics.FillRectangle(brush, ClientRectangle);
-            }
-
-            DrawAcrylicNoise(graphics);
-        }
-
-        private void DrawBlurredBackdrop(Graphics graphics, Rectangle bounds)
-        {
-            var blurWidth = Math.Max(1, bounds.Width / 22);
-            var blurHeight = Math.Max(1, bounds.Height / 22);
-
-            using (var small = new Bitmap(blurWidth, blurHeight, PixelFormat.Format32bppArgb))
-            {
-                using (var blurGraphics = Graphics.FromImage(small))
-                {
-                    blurGraphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    blurGraphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    blurGraphics.DrawImage(acrylicBackdrop, new Rectangle(0, 0, blurWidth, blurHeight));
-                }
-
-                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                graphics.DrawImage(small, bounds);
-            }
-        }
-
-        private void DrawAcrylicNoise(Graphics graphics)
-        {
-            var step = Math.Max(2, ScaleLayout(2));
-
-            using (var lightBrush = new SolidBrush(Color.FromArgb(10, 255, 255, 255)))
-            using (var darkBrush = new SolidBrush(Color.FromArgb(5, 0, 0, 0)))
-            {
-                for (var y = 1; y < ClientSize.Height; y += step)
-                {
-                    for (var x = 1; x < ClientSize.Width; x += step)
-                    {
-                        var hash = (x * 17 + y * 31) & 15;
-                        if (hash == 0)
-                            graphics.FillRectangle(lightBrush, x, y, 1, 1);
-                        else if (hash == 7)
-                            graphics.FillRectangle(darkBrush, x, y, 1, 1);
-                    }
-                }
             }
         }
 
@@ -381,6 +292,34 @@ namespace Tomighty.Windows.Timer
         private int ScaleLayout(int value)
         {
             return (int)Math.Round(value * layoutScale);
+        }
+
+        private void UpdateWindowRegion()
+        {
+            if (ClientSize.Width <= 0 || ClientSize.Height <= 0)
+                return;
+
+            var radius = ScaleLayout(WindowCornerRadius);
+            using (var path = CreateRoundedRectangle(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), radius))
+            {
+                var oldRegion = Region;
+                Region = new Region(path);
+                oldRegion?.Dispose();
+            }
+        }
+
+        private static GraphicsPath CreateRoundedRectangle(RectangleF bounds, float radius)
+        {
+            var diameter = radius * 2f;
+            var path = new GraphicsPath();
+
+            path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+
+            return path;
         }
 
         private float GetCurrentDpiScale()
@@ -690,14 +629,15 @@ namespace Tomighty.Windows.Timer
                         ? ModernTheme.ActionButtonHoverBackColor
                         : ModernTheme.ActionButtonBackColor;
 
-                var radius = Math.Max(1f, ActionButtonCornerRadius * graphics.DpiX / 96f);
-                var pathBounds = new RectangleF(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
-                var borderBounds = RectangleF.Inflate(pathBounds, -0.5f, -0.5f);
+                var scale = graphics.DpiX / 96f;
+                var radius = Math.Max(1f, ActionButtonCornerRadius * scale);
+                var pathBounds = new RectangleF(-scale, -scale, bounds.Width + scale * 2f, bounds.Height + scale * 2f);
+                var borderBounds = new RectangleF(0.5f * scale, 0.5f * scale, bounds.Width - scale, bounds.Height - scale);
 
                 using (var path = CreateRoundedRectangle(pathBounds, radius))
-                using (var borderPath = CreateRoundedRectangle(borderBounds, Math.Max(1f, radius - 0.5f)))
+                using (var borderPath = CreateRoundedRectangle(borderBounds, Math.Max(1f, radius - scale / 2f)))
                 using (var brush = new SolidBrush(fill))
-                using (var border = new Pen(ModernTheme.ActionButtonBorderColor))
+                using (var border = new Pen(ModernTheme.ActionButtonBorderColor, Math.Max(1f, scale)))
                 {
                     graphics.FillPath(brush, path);
                     graphics.DrawPath(border, borderPath);

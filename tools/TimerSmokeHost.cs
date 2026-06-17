@@ -41,11 +41,15 @@ namespace Tomighty.Tools
                     return 1;
 
                 form.Location = new Point(80, 80);
-                form.RefreshAcrylicBackdrop();
                 form.Show();
 
                 Application.DoEvents();
-                Thread.Sleep(700);
+                Thread.Sleep(250);
+                Application.DoEvents();
+
+                backdrop.Advance();
+                Application.DoEvents();
+                Thread.Sleep(450);
                 Application.DoEvents();
 
                 CaptureWindow(form.Handle, args[0]);
@@ -58,6 +62,8 @@ namespace Tomighty.Tools
 
         private sealed class ProbeBackdropForm : Form
         {
+            private bool alternate;
+
             public ProbeBackdropForm()
             {
                 StartPosition = FormStartPosition.Manual;
@@ -66,21 +72,30 @@ namespace Tomighty.Tools
                 Bounds = new Rectangle(40, 40, 520, 360);
             }
 
+            public void Advance()
+            {
+                alternate = true;
+                Invalidate();
+            }
+
             protected override void OnPaint(PaintEventArgs e)
             {
                 base.OnPaint(e);
 
-                using (var brush = new LinearGradientBrush(ClientRectangle, Color.FromArgb(32, 126, 235), Color.FromArgb(236, 242, 248), 0f))
+                var startColor = alternate ? Color.FromArgb(248, 248, 248) : Color.FromArgb(32, 126, 235);
+                var endColor = alternate ? Color.FromArgb(210, 226, 244) : Color.FromArgb(236, 242, 248);
+
+                using (var brush = new LinearGradientBrush(ClientRectangle, startColor, endColor, 0f))
                 {
                     e.Graphics.FillRectangle(brush, ClientRectangle);
                 }
 
-                using (var brush = new SolidBrush(Color.FromArgb(120, 100, 90, 220)))
+                using (var brush = new SolidBrush(alternate ? Color.FromArgb(128, 30, 30, 30) : Color.FromArgb(120, 100, 90, 220)))
                 {
-                    e.Graphics.FillEllipse(brush, 260, -70, 260, 210);
+                    e.Graphics.FillEllipse(brush, alternate ? 28 : 260, alternate ? 32 : -70, 260, 210);
                 }
 
-                using (var brush = new SolidBrush(Color.FromArgb(130, 197, 47, 61)))
+                using (var brush = new SolidBrush(alternate ? Color.FromArgb(112, 255, 255, 255) : Color.FromArgb(130, 197, 47, 61)))
                 {
                     e.Graphics.FillRectangle(brush, 0, 240, 520, 70);
                 }
