@@ -16,8 +16,8 @@ namespace Tomighty.Windows
         [STAThread]
         static void Main()
         {
-            DpiHelper.EnablePerMonitorV2();
             Application.EnableVisualStyles();
+            DpiHelper.EnablePerMonitorV2();
             Application.SetCompatibleTextRenderingDefault(false);
             AppDomain.CurrentDomain.UnhandledException += (sender, args) => HandleUnhandledException(args.ExceptionObject as Exception);
             Application.ThreadException += (sender, args) => HandleUnhandledException(args.Exception);

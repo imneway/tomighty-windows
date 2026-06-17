@@ -131,8 +131,8 @@ namespace Tomighty.Windows.UI
             try
             {
                 var tint = darkMode
-                    ? ToAbgr(32, 32, 32, 210)
-                    : ToAbgr(255, 255, 255, 218);
+                    ? ToAbgr(32, 32, 32, 142)
+                    : ToAbgr(243, 243, 243, 132);
 
                 var accent = new AccentPolicy
                 {

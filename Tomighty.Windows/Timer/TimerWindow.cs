@@ -43,6 +43,7 @@ namespace Tomighty.Windows.Timer
 
             Icon = Properties.Resources.icon_tomato_red;
 
+            titleLabel.DrawFrame = true;
             titleLabel.Font = ModernTheme.TextFont(10f);
             timeLabel.Font = ModernTheme.DisplayFont(50f);
             timerButton.Font = ModernTheme.TextFont(9.5f);
@@ -103,6 +104,8 @@ namespace Tomighty.Windows.Timer
 
         protected override void OnPaintBackground(PaintEventArgs e)
         {
+            e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
+
             if (Windows11Backdrop.IsSupported)
             {
                 using (var brush = new SolidBrush(ModernTheme.TimerWindowTintColor))
@@ -119,6 +122,26 @@ namespace Tomighty.Windows.Timer
             {
                 e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
             }
+
+            using (var pen = new Pen(ModernTheme.InnerHighlightColor))
+            {
+                e.Graphics.DrawLine(pen, 1, 1, Width - 2, 1);
+                e.Graphics.DrawLine(pen, 1, 1, 1, Height - 2);
+            }
+        }
+
+        private static void DrawMaterialSurface(Graphics graphics, Rectangle bounds, Color fill, Color border)
+        {
+            if (bounds.Width <= 0 || bounds.Height <= 0)
+                return;
+
+            var surfaceBounds = new Rectangle(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
+            using (var brush = new SolidBrush(fill))
+            using (var borderPen = new Pen(border))
+            {
+                graphics.FillRectangle(brush, bounds);
+                graphics.DrawRectangle(borderPen, surfaceBounds);
+            }
         }
 
         private class TransparentLabel : Label
@@ -132,20 +155,20 @@ namespace Tomighty.Windows.Timer
                 BackColor = Color.Transparent;
             }
 
+            public bool DrawFrame { get; set; }
+
             protected override void OnPaintBackground(PaintEventArgs e)
             {
                 PaintParentBackground(e);
+
+                if (DrawFrame)
+                    DrawMaterialSurface(e.Graphics, ClientRectangle, ModernTheme.MaterialLayerBackColor, ModernTheme.BorderColor);
             }
 
             protected override void OnPaint(PaintEventArgs e)
             {
                 e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-
-                using (var brush = new SolidBrush(ForeColor))
-                using (var format = CreateStringFormat(TextAlign))
-                {
-                    e.Graphics.DrawString(Text, Font, brush, ClientRectangle, format);
-                }
+                TextRenderer.DrawText(e.Graphics, Text, Font, ClientRectangle, ForeColor, CreateTextFormat(TextAlign));
             }
 
             protected void PaintParentBackground(PaintEventArgs e)
@@ -171,28 +194,25 @@ namespace Tomighty.Windows.Timer
                 }
             }
 
-            private static StringFormat CreateStringFormat(System.Drawing.ContentAlignment alignment)
+            private static TextFormatFlags CreateTextFormat(System.Drawing.ContentAlignment alignment)
             {
-                var format = new StringFormat(StringFormatFlags.NoWrap)
-                {
-                    Trimming = StringTrimming.EllipsisCharacter
-                };
+                var flags = TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.PreserveGraphicsClipping;
 
                 if (alignment == System.Drawing.ContentAlignment.TopLeft || alignment == System.Drawing.ContentAlignment.MiddleLeft || alignment == System.Drawing.ContentAlignment.BottomLeft)
-                    format.Alignment = StringAlignment.Near;
+                    flags |= TextFormatFlags.Left;
                 else if (alignment == System.Drawing.ContentAlignment.TopRight || alignment == System.Drawing.ContentAlignment.MiddleRight || alignment == System.Drawing.ContentAlignment.BottomRight)
-                    format.Alignment = StringAlignment.Far;
+                    flags |= TextFormatFlags.Right;
                 else
-                    format.Alignment = StringAlignment.Center;
+                    flags |= TextFormatFlags.HorizontalCenter;
 
                 if (alignment == System.Drawing.ContentAlignment.TopLeft || alignment == System.Drawing.ContentAlignment.TopCenter || alignment == System.Drawing.ContentAlignment.TopRight)
-                    format.LineAlignment = StringAlignment.Near;
+                    flags |= TextFormatFlags.Top;
                 else if (alignment == System.Drawing.ContentAlignment.BottomLeft || alignment == System.Drawing.ContentAlignment.BottomCenter || alignment == System.Drawing.ContentAlignment.BottomRight)
-                    format.LineAlignment = StringAlignment.Far;
+                    flags |= TextFormatFlags.Bottom;
                 else
-                    format.LineAlignment = StringAlignment.Center;
+                    flags |= TextFormatFlags.VerticalCenter;
 
-                return format;
+                return flags;
             }
 
             protected override void WndProc(ref Message m)
@@ -225,17 +245,9 @@ namespace Tomighty.Windows.Timer
 
             protected override void OnPaint(PaintEventArgs e)
             {
-                e.Graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-                e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
-
-                using (var brush = new SolidBrush(ForeColor))
-                using (var format = new StringFormat(StringFormatFlags.NoWrap))
-                {
-                    format.Alignment = StringAlignment.Center;
-                    format.LineAlignment = StringAlignment.Center;
-                    format.Trimming = StringTrimming.None;
-                    e.Graphics.DrawString(Text, Font, brush, ClientRectangle, format);
-                }
+                e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+                var flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.PreserveGraphicsClipping;
+                TextRenderer.DrawText(e.Graphics, Text, Font, ClientRectangle, ForeColor, flags);
             }
         }
 
@@ -301,13 +313,8 @@ namespace Tomighty.Windows.Timer
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 PaintParentBackground(e);
 
-                if (hovered || pressed)
-                {
-                    using (var brush = new SolidBrush(pressed ? ModernTheme.ControlPressedBackColor : ModernTheme.ControlHoverBackColor))
-                    {
-                        e.Graphics.FillRectangle(brush, ClientRectangle);
-                    }
-                }
+                var fill = pressed ? ModernTheme.ControlPressedBackColor : hovered ? ModernTheme.MaterialLayerHoverBackColor : ModernTheme.MaterialLayerBackColor;
+                DrawMaterialSurface(e.Graphics, ClientRectangle, fill, ModernTheme.BorderColor);
 
                 var scale = e.Graphics.DpiX / 96f;
                 var width = 8f * scale;

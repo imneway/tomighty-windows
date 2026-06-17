@@ -15,24 +15,31 @@ namespace Tomighty.Windows.UI
     internal static class ModernTheme
     {
         private const string TextFontName = "Segoe UI";
+        private static readonly Color CommandPaletteDarkBaseColor = Color.FromArgb(32, 32, 32);
+        private static readonly Color CommandPaletteLightBaseColor = Color.FromArgb(243, 243, 243);
+        private static readonly Color TomatoRed = Color.FromArgb(197, 47, 61);
 
         public static bool IsLightTheme => ReadAppsUseLightTheme();
         public static bool IsDarkTheme => !IsLightTheme;
 
-        public static Color WindowBackColor => IsLightTheme ? Color.FromArgb(243, 243, 243) : Color.FromArgb(32, 32, 32);
-        public static Color TimerWindowBackColor => IsLightTheme ? Color.FromArgb(248, 248, 248) : Color.FromArgb(32, 32, 32);
-        public static Color TimerWindowTintColor => IsLightTheme ? Color.FromArgb(110, 255, 255, 255) : Color.FromArgb(120, 32, 32, 32);
+        public static Color WindowBackColor => IsLightTheme ? CommandPaletteLightBaseColor : CommandPaletteDarkBaseColor;
+        public static Color TimerWindowBackColor => WindowBackColor;
+        public static Color TimerWindowTintColor => IsLightTheme ? Color.FromArgb(72, 255, 255, 255) : Color.FromArgb(48, 32, 32, 32);
+        public static Color MaterialLayerBackColor => IsLightTheme ? Color.FromArgb(160, 255, 255, 255) : Color.FromArgb(80, 32, 32, 32);
+        public static Color MaterialLayerSecondaryBackColor => IsLightTheme ? Color.FromArgb(102, 255, 255, 255) : Color.FromArgb(36, 32, 32, 32);
+        public static Color MaterialLayerHoverBackColor => IsLightTheme ? Color.FromArgb(190, 255, 255, 255) : Color.FromArgb(104, 48, 48, 48);
         public static Color ControlBackColor => IsLightTheme ? SystemColors.Control : Color.FromArgb(45, 45, 45);
         public static Color ControlHoverBackColor => IsLightTheme ? Color.FromArgb(229, 241, 251) : Color.FromArgb(62, 62, 62);
         public static Color ControlPressedBackColor => IsLightTheme ? Color.FromArgb(204, 228, 247) : Color.FromArgb(73, 73, 73);
         public static Color TextColor => IsLightTheme ? SystemColors.ControlText : Color.FromArgb(255, 255, 255);
         public static Color SecondaryTextColor => IsLightTheme ? SystemColors.GrayText : Color.FromArgb(200, 200, 200);
-        public static Color BorderColor => IsLightTheme ? Color.FromArgb(204, 204, 204) : Color.FromArgb(96, 96, 96);
-        public static Color ActionButtonBackColor => IsLightTheme ? Color.FromArgb(250, 250, 250) : Color.FromArgb(45, 45, 45);
-        public static Color ActionButtonHoverBackColor => IsLightTheme ? Color.FromArgb(246, 246, 246) : ControlHoverBackColor;
-        public static Color ActionButtonPressedBackColor => IsLightTheme ? Color.FromArgb(238, 238, 238) : ControlPressedBackColor;
-        public static Color ActionButtonBorderColor => IsLightTheme ? Color.FromArgb(180, 180, 180) : BorderColor;
-        public static Color ActionButtonTextColor => IsLightTheme ? Color.FromArgb(32, 32, 32) : TextColor;
+        public static Color BorderColor => IsLightTheme ? Color.FromArgb(138, 0, 0, 0) : Color.FromArgb(118, 255, 255, 255);
+        public static Color InnerHighlightColor => IsLightTheme ? Color.FromArgb(120, 255, 255, 255) : Color.FromArgb(42, 255, 255, 255);
+        public static Color ActionButtonBackColor => TomatoRed;
+        public static Color ActionButtonHoverBackColor => Color.FromArgb(214, 62, 76);
+        public static Color ActionButtonPressedBackColor => Color.FromArgb(160, 36, 49);
+        public static Color ActionButtonBorderColor => Color.FromArgb(120, 92, 12, 20);
+        public static Color ActionButtonTextColor => Color.White;
         public static Color InputBackColor => IsLightTheme ? SystemColors.Window : Color.FromArgb(32, 32, 32);
         public static Color MenuBackColor => IsLightTheme ? SystemColors.Menu : Color.FromArgb(32, 32, 32);
         public static Color MenuTextColor => IsLightTheme ? SystemColors.MenuText : TextColor;

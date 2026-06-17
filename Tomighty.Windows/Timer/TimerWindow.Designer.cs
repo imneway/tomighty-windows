@@ -49,9 +49,9 @@ namespace Tomighty.Windows.Timer
             | System.Windows.Forms.AnchorStyles.Right)));
             this.timeLabel.BackColor = System.Drawing.Color.Transparent;
             this.timeLabel.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.timeLabel.Location = new System.Drawing.Point(18, 42);
+            this.timeLabel.Location = new System.Drawing.Point(18, 48);
             this.timeLabel.Name = "timeLabel";
-            this.timeLabel.Size = new System.Drawing.Size(204, 78);
+            this.timeLabel.Size = new System.Drawing.Size(204, 74);
             this.timeLabel.TabIndex = 0;
             this.timeLabel.Text = "--:--";
             this.timeLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -76,7 +76,7 @@ namespace Tomighty.Windows.Timer
             this.closeButton.CausesValidation = false;
             this.closeButton.FlatAppearance.BorderSize = 0;
             this.closeButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.closeButton.Location = new System.Drawing.Point(202, 10);
+            this.closeButton.Location = new System.Drawing.Point(194, 14);
             this.closeButton.Name = "closeButton";
             this.closeButton.Size = new System.Drawing.Size(28, 28);
             this.closeButton.TabIndex = 2;
@@ -89,9 +89,9 @@ namespace Tomighty.Windows.Timer
             | System.Windows.Forms.AnchorStyles.Right)));
             this.titleLabel.BackColor = System.Drawing.Color.Transparent;
             this.titleLabel.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.titleLabel.Location = new System.Drawing.Point(36, 14);
+            this.titleLabel.Location = new System.Drawing.Point(18, 14);
             this.titleLabel.Name = "titleLabel";
-            this.titleLabel.Size = new System.Drawing.Size(168, 24);
+            this.titleLabel.Size = new System.Drawing.Size(177, 28);
             this.titleLabel.TabIndex = 3;
             this.titleLabel.Text = "Title";
             this.titleLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -102,7 +102,7 @@ namespace Tomighty.Windows.Timer
             | System.Windows.Forms.AnchorStyles.Right)));
             this.timerButton.Location = new System.Drawing.Point(26, 130);
             this.timerButton.Name = "timerButton";
-            this.timerButton.Size = new System.Drawing.Size(188, 32);
+            this.timerButton.Size = new System.Drawing.Size(188, 34);
             this.timerButton.TabIndex = 4;
             this.timerButton.Text = "Timer Action";
             this.timerButton.UseVisualStyleBackColor = true;
