@@ -41,6 +41,14 @@ namespace Tomighty.Windows.Timer
         private const int WindowCornerRadius = 20;
         private const int ActionButtonCornerRadius = 8;
 
+        private enum ActionButtonTone
+        {
+            Action,
+            Break,
+            Neutral,
+            Custom
+        }
+
         private Action primaryTimerAction;
         private Action secondaryTimerAction;
         private bool pinned;
@@ -57,6 +65,8 @@ namespace Tomighty.Windows.Timer
         private string secondaryActionText = "";
         private Color primaryActionButtonColor = ModernTheme.ActionButtonBackColor;
         private Color secondaryActionButtonColor = ModernTheme.NeutralActionButtonBackColor;
+        private ActionButtonTone primaryActionButtonTone = ActionButtonTone.Action;
+        private ActionButtonTone secondaryActionButtonTone = ActionButtonTone.Neutral;
         private float layoutScale = 1f;
 
         private readonly Action<string> UpdateTimeDisplayDelegate;
@@ -170,10 +180,12 @@ namespace Tomighty.Windows.Timer
             messageText = message ?? "";
             primaryActionText = primaryText;
             primaryTimerAction = primaryAction;
-            primaryActionButtonColor = primaryColor;
             secondaryActionText = secondaryText ?? "";
             secondaryTimerAction = secondaryAction;
-            secondaryActionButtonColor = secondaryColor;
+            primaryActionButtonTone = GetActionButtonTone(primaryColor);
+            secondaryActionButtonTone = GetActionButtonTone(secondaryColor);
+            primaryActionButtonColor = ResolveActionButtonColor(primaryActionButtonTone, primaryColor);
+            secondaryActionButtonColor = ResolveActionButtonColor(secondaryActionButtonTone, secondaryColor);
             primaryActionButtonHovered = false;
             primaryActionButtonPressed = false;
             secondaryActionButtonHovered = false;
@@ -623,6 +635,41 @@ namespace Tomighty.Windows.Timer
             return Math.Max(0, Math.Min(255, value));
         }
 
+        private static ActionButtonTone GetActionButtonTone(Color color)
+        {
+            if (color.ToArgb() == ModernTheme.ActionButtonBackColor.ToArgb())
+                return ActionButtonTone.Action;
+
+            if (color.ToArgb() == ModernTheme.BreakActionButtonBackColor.ToArgb())
+                return ActionButtonTone.Break;
+
+            if (color.ToArgb() == ModernTheme.NeutralActionButtonBackColor.ToArgb())
+                return ActionButtonTone.Neutral;
+
+            return ActionButtonTone.Custom;
+        }
+
+        private static Color ResolveActionButtonColor(ActionButtonTone tone, Color customColor)
+        {
+            switch (tone)
+            {
+                case ActionButtonTone.Action:
+                    return ModernTheme.ActionButtonBackColor;
+                case ActionButtonTone.Break:
+                    return ModernTheme.BreakActionButtonBackColor;
+                case ActionButtonTone.Neutral:
+                    return ModernTheme.NeutralActionButtonBackColor;
+                default:
+                    return customColor;
+            }
+        }
+
+        private void RefreshThemedActionButtonColors()
+        {
+            primaryActionButtonColor = ResolveActionButtonColor(primaryActionButtonTone, primaryActionButtonColor);
+            secondaryActionButtonColor = ResolveActionButtonColor(secondaryActionButtonTone, secondaryActionButtonColor);
+        }
+
         private float GetCurrentDpiScale()
         {
             if (IsHandleCreated)
@@ -773,6 +820,12 @@ namespace Tomighty.Windows.Timer
             BackColor = ModernTheme.TimerWindowBackColor;
             titleLabel.ForeColor = ModernTheme.TimerTextColor;
             timeLabel.ForeColor = ModernTheme.TimerTextColor;
+            closeButton.ForeColor = ModernTheme.TimerTextColor;
+            timerButton.ForeColor = ModernTheme.ActionButtonTextColor;
+            ApplyCompactFonts();
+            RefreshThemedActionButtonColors();
+            ApplyCompactWindowSize();
+            UpdateCompactBounds();
             closeButton.Invalidate();
             timerButton.Invalidate();
             Invalidate();

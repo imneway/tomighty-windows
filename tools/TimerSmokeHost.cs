@@ -19,6 +19,9 @@ namespace Tomighty.Tools
         private static Color BreakActionButtonBackColor => GetModernThemeColor("BreakActionButtonBackColor");
         private static Color NeutralActionButtonBackColor => GetModernThemeColor("NeutralActionButtonBackColor");
         private static Color ActionButtonBorderColor => GetModernThemeColor("ActionButtonBorderColor");
+        private static Color ActionButtonTextColor => GetModernThemeColor("ActionButtonTextColor");
+        private static Color TextColor => GetModernThemeColor("TextColor");
+        private static Color TimerTextColor => GetModernThemeColor("TimerTextColor");
 
         [STAThread]
         private static int Main(string[] args)
@@ -53,6 +56,7 @@ namespace Tomighty.Tools
                     "timer-window-driven-states-dark",
                     "timer-window-driven-dark.png",
                     backdrop);
+                AssertThemeSwitchUpdatesTimerWindow(backdrop);
                 SetThemeOverride(null);
                 backdrop.Close();
             }
@@ -289,6 +293,8 @@ namespace Tomighty.Tools
             AssertEqual("timerWindowForeColor", GetModernThemeColor("TimerTextColor").ToArgb(), window.ForeColor.ToArgb());
             AssertEqual("timerWindowBackColor", GetModernThemeColor("TimerWindowBackColor").ToArgb(), window.BackColor.ToArgb());
             AssertExpectedThemeActionColors();
+            AssertExpectedThemeTextColors();
+            AssertTimerTypography(window);
             AssertEqual("primaryActionText", primaryActionText, GetPrivateField<string>(window, "primaryActionText"));
             AssertEqual("primaryActionButtonColor", primaryActionColor.ToArgb(), GetPrivateField<Color>(window, "primaryActionButtonColor").ToArgb());
             AssertEqual("secondaryActionText", secondaryActionText, GetPrivateField<string>(window, "secondaryActionText"));
@@ -307,6 +313,81 @@ namespace Tomighty.Tools
             AssertEqual("themeBreakButtonColor", (isLightTheme ? Color.FromArgb(0, 155, 59) : Color.FromArgb(2, 53, 23)).ToArgb(), BreakActionButtonBackColor.ToArgb());
             AssertEqual("themeNeutralButtonColor", (isLightTheme ? Color.FromArgb(133, 137, 145) : Color.FromArgb(47, 48, 50)).ToArgb(), NeutralActionButtonBackColor.ToArgb());
             AssertEqual("themeActionButtonBorderColor", (isLightTheme ? Color.FromArgb(31, 0, 0, 0) : Color.FromArgb(31, 255, 255, 255)).ToArgb(), ActionButtonBorderColor.ToArgb());
+        }
+
+        private static void AssertExpectedThemeTextColors()
+        {
+            var isLightTheme = GetModernThemeBool("IsTimerWindowLightTheme");
+            var expectedTextColor = isLightTheme ? Color.FromArgb(230, 0, 0, 0) : Color.FromArgb(230, 255, 255, 255);
+            AssertEqual("themeTextColor", expectedTextColor.ToArgb(), TextColor.ToArgb());
+            AssertEqual("themeTimerTextColor", expectedTextColor.ToArgb(), TimerTextColor.ToArgb());
+            AssertEqual("themeActionButtonTextColor", Color.FromArgb(230, 255, 255, 255).ToArgb(), ActionButtonTextColor.ToArgb());
+        }
+
+        private static void AssertThemeSwitchUpdatesTimerWindow(IWin32Window owner)
+        {
+            SetThemeOverride(true);
+
+            using (var window = new TimerWindow())
+            {
+                window.UpdateTitle("Pomodoro");
+                window.UpdateTimeDisplay("25:00");
+                window.SetTimerAction("Interrupt", () => { }, ActionButtonBackColor);
+                window.StartPosition = FormStartPosition.Manual;
+
+                if (!window.IsHandleCreated && window.Handle == IntPtr.Zero)
+                    throw new InvalidOperationException("TimerWindow handle was not created.");
+
+                window.Location = new Point(120, 120);
+                window.Show(owner);
+                PumpUi();
+
+                var initialSize = window.Size;
+                AssertTimerTypography(window);
+                AssertEqual("themeSwitchInitialActionColor", ActionButtonBackColor.ToArgb(), GetPrivateField<Color>(window, "primaryActionButtonColor").ToArgb());
+
+                SetThemeOverride(false);
+                InvokeApplyTheme(window);
+                PumpUi();
+
+                AssertEqual("themeSwitchDarkSize", initialSize, window.Size);
+                AssertTimerTypography(window);
+                AssertExpectedThemeActionColors();
+                AssertExpectedThemeTextColors();
+                AssertEqual("themeSwitchDarkForeColor", TimerTextColor.ToArgb(), window.ForeColor.ToArgb());
+                AssertEqual("themeSwitchDarkActionColor", ActionButtonBackColor.ToArgb(), GetPrivateField<Color>(window, "primaryActionButtonColor").ToArgb());
+
+                SetThemeOverride(true);
+                InvokeApplyTheme(window);
+                PumpUi();
+
+                AssertEqual("themeSwitchLightSize", initialSize, window.Size);
+                AssertTimerTypography(window);
+                AssertExpectedThemeActionColors();
+                AssertExpectedThemeTextColors();
+                AssertEqual("themeSwitchLightForeColor", TimerTextColor.ToArgb(), window.ForeColor.ToArgb());
+                AssertEqual("themeSwitchLightActionColor", ActionButtonBackColor.ToArgb(), GetPrivateField<Color>(window, "primaryActionButtonColor").ToArgb());
+
+                window.Close();
+            }
+        }
+
+        private static void InvokeApplyTheme(TimerWindow window)
+        {
+            typeof(TimerWindow)
+                .GetMethod("ApplyTheme", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[0]);
+        }
+
+        private static void AssertTimerTypography(TimerWindow window)
+        {
+            var titleLabel = GetPrivateField<Control>(window, "titleLabel");
+            var timeLabel = GetPrivateField<Control>(window, "timeLabel");
+            var timerButton = GetPrivateField<Control>(window, "timerButton");
+
+            AssertNear("titleFontSize", 9.5f, titleLabel.Font.SizeInPoints, 0.1f);
+            AssertNear("timeFontSize", 36f, timeLabel.Font.SizeInPoints, 0.1f);
+            AssertNear("timerButtonFontSize", 9.5f, timerButton.Font.SizeInPoints, 0.1f);
         }
 
         private static void AssertHorizontalActionButtons(TimerWindow window)
@@ -344,6 +425,12 @@ namespace Tomighty.Tools
         private static void AssertEqual<T>(string name, T expected, T actual)
         {
             if (!Equals(expected, actual))
+                throw new InvalidOperationException($"{name}: expected '{expected}', got '{actual}'.");
+        }
+
+        private static void AssertNear(string name, float expected, float actual, float tolerance)
+        {
+            if (Math.Abs(expected - actual) > tolerance)
                 throw new InvalidOperationException($"{name}: expected '{expected}', got '{actual}'.");
         }
 

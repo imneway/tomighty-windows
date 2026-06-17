@@ -22,6 +22,7 @@ namespace Tomighty.Windows.UI
         private const string TimerDisplayMediumFontName = "OPPO Sans 4.0 EN Medium_opsz40";
         private static readonly Color CommandPaletteDarkBaseColor = Color.FromArgb(32, 32, 32);
         private static readonly Color CommandPaletteLightBaseColor = Color.FromArgb(243, 243, 243);
+        private const int PrimaryTextAlpha = 230;
         private static readonly Color TomatoRed = Color.FromArgb(197, 47, 61);
         private static readonly Lazy<bool> TextMediumFontAvailable = new Lazy<bool>(() => IsFontInstalled(TextMediumFontName));
         private static readonly Lazy<bool> TimerDisplayFontAvailable = new Lazy<bool>(() => IsFontInstalled(TimerDisplayFontName));
@@ -40,8 +41,8 @@ namespace Tomighty.Windows.UI
         public static Color ControlBackColor => IsLightTheme ? SystemColors.Control : Color.FromArgb(45, 45, 45);
         public static Color ControlHoverBackColor => IsLightTheme ? Color.FromArgb(229, 241, 251) : Color.FromArgb(62, 62, 62);
         public static Color ControlPressedBackColor => IsLightTheme ? Color.FromArgb(204, 228, 247) : Color.FromArgb(73, 73, 73);
-        public static Color TextColor => IsLightTheme ? SystemColors.ControlText : Color.FromArgb(255, 255, 255);
-        public static Color TimerTextColor => IsTimerWindowLightTheme ? Color.FromArgb(28, 28, 28) : Color.FromArgb(245, 245, 245);
+        public static Color TextColor => IsLightTheme ? Color.FromArgb(PrimaryTextAlpha, 0, 0, 0) : Color.FromArgb(PrimaryTextAlpha, 255, 255, 255);
+        public static Color TimerTextColor => TextColor;
         public static Color SecondaryTextColor => IsLightTheme ? SystemColors.GrayText : Color.FromArgb(200, 200, 200);
         public static Color BorderColor => IsLightTheme ? Color.FromArgb(138, 0, 0, 0) : Color.FromArgb(118, 255, 255, 255);
         public static Color InnerHighlightColor => IsLightTheme ? Color.FromArgb(120, 255, 255, 255) : Color.FromArgb(42, 255, 255, 255);
@@ -51,7 +52,7 @@ namespace Tomighty.Windows.UI
         public static Color BreakActionButtonBackColor => IsTimerWindowLightTheme ? Color.FromArgb(0, 155, 59) : Color.FromArgb(2, 53, 23);
         public static Color NeutralActionButtonBackColor => IsTimerWindowLightTheme ? Color.FromArgb(133, 137, 145) : Color.FromArgb(47, 48, 50);
         public static Color ActionButtonBorderColor => IsTimerWindowLightTheme ? Color.FromArgb(31, 0, 0, 0) : Color.FromArgb(31, 255, 255, 255);
-        public static Color ActionButtonTextColor => Color.White;
+        public static Color ActionButtonTextColor => Color.FromArgb(PrimaryTextAlpha, 255, 255, 255);
         public static Color InputBackColor => IsLightTheme ? SystemColors.Window : Color.FromArgb(32, 32, 32);
         public static Color MenuBackColor => IsLightTheme ? SystemColors.Menu : Color.FromArgb(32, 32, 32);
         public static Color MenuTextColor => IsLightTheme ? SystemColors.MenuText : TextColor;
@@ -102,7 +103,17 @@ namespace Tomighty.Windows.UI
         public static void ApplyTimerWindow(Form form)
         {
             Windows11Backdrop.ApplyAcrylic(form, IsDarkTheme);
-            ApplyNativeForm(form, BackdropMaterial.Acrylic, () => TimerWindowBackColor, () => Windows11Backdrop.RefreshAcrylic(form, IsDarkTheme));
+            form.BackColor = TimerWindowBackColor;
+            form.ForeColor = TimerTextColor;
+            form.Font = SystemFonts.MessageBoxFont;
+            form.Icon = Properties.Resources.icon_tomato_red;
+            RegisterThemeChange(form, () =>
+            {
+                form.BackColor = TimerWindowBackColor;
+                form.ForeColor = TimerTextColor;
+                Windows11Backdrop.RefreshAcrylic(form, IsDarkTheme);
+                form.Invalidate(true);
+            });
             form.BackColor = TimerWindowBackColor;
             form.Opacity = 1.0;
         }
