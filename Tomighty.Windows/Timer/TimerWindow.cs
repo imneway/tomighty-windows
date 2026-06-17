@@ -26,12 +26,13 @@ namespace Tomighty.Windows.Timer
         private const int WM_NCLBUTTONDOWN = 0x00A1;
         private const int HTCAPTION = 0x0002;
         private const int CompactWidth = 280;
-        private const int CompactHeight = 140;
-        private const int CompactPadding = 16;
+        private const int CompactHeight = 152;
+        private const int CompactPadding = 8;
         private const int TitleHeight = 26;
         private const int DropDownSize = 30;
-        private const int TimeTop = 44;
-        private const int TimeHeight = 76;
+        private const int TimeTop = 40;
+        private const int TimeHeight = 66;
+        private const int ActionButtonWidth = 200;
         private const int ActionButtonHeight = 34;
         private const int ActionButtonCornerRadius = 4;
 
@@ -149,7 +150,7 @@ namespace Tomighty.Windows.Timer
         private void ApplyCompactFonts()
         {
             titleLabel.Font = ModernTheme.SemiBoldTextFont(11f);
-            timeLabel.Font = ModernTheme.DisplayMediumFont(46f);
+            timeLabel.Font = ModernTheme.DisplayMediumFont(42f);
             timerButton.Font = ModernTheme.SemiBoldTextFont(9.5f);
         }
 
@@ -281,8 +282,9 @@ namespace Tomighty.Windows.Timer
         private Rectangle GetActionButtonBounds()
         {
             var padding = ScaleLayout(CompactPadding);
+            var width = Math.Min(ScaleLayout(ActionButtonWidth), ClientSize.Width - padding * 2);
             var height = ScaleLayout(ActionButtonHeight);
-            return new Rectangle(padding, ClientSize.Height - padding - height, ClientSize.Width - padding * 2, height);
+            return new Rectangle((ClientSize.Width - width) / 2, ClientSize.Height - padding - height, width, height);
         }
 
         private int ScaleLayout(int value)
