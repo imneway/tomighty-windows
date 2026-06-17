@@ -85,7 +85,7 @@ namespace Tomighty.Windows.Preferences
             this.groupBox1.Controls.Add(this.label1);
             this.groupBox1.Location = new System.Drawing.Point(13, 13);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(229, 113);
+            this.groupBox1.Size = new System.Drawing.Size(302, 113);
             this.groupBox1.TabIndex = 0;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Duration";
@@ -221,7 +221,7 @@ namespace Tomighty.Windows.Preferences
             this.groupBox2.Controls.Add(this.label7);
             this.groupBox2.Location = new System.Drawing.Point(10, 132);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(232, 81);
+            this.groupBox2.Size = new System.Drawing.Size(305, 81);
             this.groupBox2.TabIndex = 1;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Long Break Cycle";
@@ -261,7 +261,7 @@ namespace Tomighty.Windows.Preferences
             // okButton
             // 
             this.okButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.okButton.Location = new System.Drawing.Point(119, 273);
+            this.okButton.Location = new System.Drawing.Point(192, 273);
             this.okButton.Name = "okButton";
             this.okButton.Size = new System.Drawing.Size(75, 23);
             this.okButton.TabIndex = 2;
@@ -273,7 +273,7 @@ namespace Tomighty.Windows.Preferences
             // 
             this.cancelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.cancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.cancelButton.Location = new System.Drawing.Point(200, 273);
+            this.cancelButton.Location = new System.Drawing.Point(273, 273);
             this.cancelButton.Name = "cancelButton";
             this.cancelButton.Size = new System.Drawing.Size(75, 23);
             this.cancelButton.TabIndex = 3;
@@ -292,7 +292,7 @@ namespace Tomighty.Windows.Preferences
             this.tabControl1.Location = new System.Drawing.Point(12, 12);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(263, 255);
+            this.tabControl1.Size = new System.Drawing.Size(336, 255);
             this.tabControl1.TabIndex = 4;
             // 
             // tabPage1
@@ -302,7 +302,7 @@ namespace Tomighty.Windows.Preferences
             this.tabPage1.Location = new System.Drawing.Point(4, 22);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(10);
-            this.tabPage1.Size = new System.Drawing.Size(255, 229);
+            this.tabPage1.Size = new System.Drawing.Size(328, 229);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Cycles";
             this.tabPage1.UseVisualStyleBackColor = true;
@@ -315,7 +315,7 @@ namespace Tomighty.Windows.Preferences
             this.tabPage2.Location = new System.Drawing.Point(4, 22);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(10);
-            this.tabPage2.Size = new System.Drawing.Size(255, 229);
+            this.tabPage2.Size = new System.Drawing.Size(328, 229);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Notifications";
             this.tabPage2.UseVisualStyleBackColor = true;
@@ -355,7 +355,7 @@ namespace Tomighty.Windows.Preferences
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.Padding = new System.Windows.Forms.Padding(10);
-            this.tabPage3.Size = new System.Drawing.Size(255, 229);
+            this.tabPage3.Size = new System.Drawing.Size(328, 229);
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Miscellaneous";
             this.tabPage3.UseVisualStyleBackColor = true;
@@ -373,10 +373,10 @@ namespace Tomighty.Windows.Preferences
             // UserPreferencesForm
             // 
             this.AcceptButton = this.okButton;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.CancelButton = this.cancelButton;
-            this.ClientSize = new System.Drawing.Size(287, 308);
+            this.ClientSize = new System.Drawing.Size(360, 308);
             this.Controls.Add(this.tabControl1);
             this.Controls.Add(this.cancelButton);
             this.Controls.Add(this.okButton);

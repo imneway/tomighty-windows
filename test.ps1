@@ -21,8 +21,8 @@ Push-Location $root
 try {
     & $msbuild $solution /t:Rebuild /p:Configuration=Debug
     & ".\packages\NUnit.ConsoleRunner.3.4.1\tools\nunit3-console.exe" ".\Tomighty.Core.Test\bin\Debug\Tomighty.Core.Test.dll"
-    powershell -STA -NoProfile -ExecutionPolicy Bypass -File ".\tools\smoke-timer-window.ps1" -Configuration Debug
     powershell -STA -NoProfile -ExecutionPolicy Bypass -File ".\tools\smoke-dialogs.ps1" -Configuration Debug
+    powershell -STA -NoProfile -ExecutionPolicy Bypass -File ".\tools\smoke-timer-window.ps1" -Configuration Debug
 
     if (-not $SkipRelease) {
         powershell -NoProfile -ExecutionPolicy Bypass -File ".\publish.ps1" -Mode Zip -Configuration Release
