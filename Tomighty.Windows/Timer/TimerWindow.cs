@@ -26,16 +26,17 @@ namespace Tomighty.Windows.Timer
         private const int WM_NCLBUTTONDOWN = 0x00A1;
         private const int HTCAPTION = 0x0002;
         private const int CompactPadding = 8;
-        private const int ActionButtonWidth = 200;
-        private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
-        private const int CompactHeight = 168;
+        private const int ActionButtonWidth = 180;
+        private const int ActionButtonHeight = 36;
         private const int TitleHeight = 20;
         private const int DropDownSize = 30;
-        private const int TimeTop = 48;
-        private const int TimeHeight = 56;
-        private const int ActionButtonHeight = 36;
+        private const int TimeVerticalMargin = 14;
+        private const int TimeTop = CompactPadding + TitleHeight + TimeVerticalMargin;
+        private const int TimeHeight = 48;
+        private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
+        private const int CompactHeight = CompactPadding + TitleHeight + TimeVerticalMargin + TimeHeight + TimeVerticalMargin + ActionButtonHeight + CompactPadding;
         private const int ActionButtonCornerRadius = 8;
-        private const int WindowCornerRadius = 12;
+        private const int WindowCornerRadius = 16;
 
         private Action currentTimerAction;
         private bool pinned;
@@ -155,7 +156,7 @@ namespace Tomighty.Windows.Timer
         private void ApplyCompactFonts()
         {
             titleLabel.Font = ModernTheme.TextFont(9.5f);
-            timeLabel.Font = ModernTheme.DisplayFont(42f);
+            timeLabel.Font = ModernTheme.DisplayMediumFont(36f);
             timerButton.Font = ModernTheme.MediumTextFont(9.5f);
         }
 
