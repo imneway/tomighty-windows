@@ -9,6 +9,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using Tomighty.Events;
+using Tomighty.Windows.UI;
 
 namespace Tomighty.Windows.Timer
 {
@@ -22,7 +23,8 @@ namespace Tomighty.Windows.Timer
         private readonly IWindowState pomodoroCompletedState;
         private readonly IWindowState breakFinishedState;
         private readonly IWindowState pomodoroInterruptedState;
-        private readonly IWindowState breakInterruptedState;
+        private readonly IWindowState shortBreakInterruptedState;
+        private readonly IWindowState longBreakInterruptedState;
 
         private IWindowState currentState;
         private TimerWindow window;
@@ -39,8 +41,9 @@ namespace Tomighty.Windows.Timer
             longBreakState = new LongBreakState(pomodoroEngine);
             pomodoroCompletedState = new PomodoroCompletedState(pomodoroEngine);
             breakFinishedState = new BreakFinishedState(pomodoroEngine);
-            pomodoroInterruptedState = new TimerInterruptedState("Pomodoro Interrupted", pomodoroEngine);
-            breakInterruptedState = new TimerInterruptedState("Break Interrupted", pomodoroEngine);
+            pomodoroInterruptedState = new TimerInterruptedState("Pomodoro Interrupted", IntervalType.Pomodoro, pomodoroEngine);
+            shortBreakInterruptedState = new TimerInterruptedState("Short Break Interrupted", IntervalType.ShortBreak, pomodoroEngine);
+            longBreakInterruptedState = new TimerInterruptedState("Long Break Interrupted", IntervalType.LongBreak, pomodoroEngine);
 
             currentState = idleState;
 
@@ -147,7 +150,8 @@ namespace Tomighty.Windows.Timer
         private IWindowState GetTimerInterruptedStateFor(IntervalType intervalType)
         {
             if (intervalType == IntervalType.Pomodoro) return pomodoroInterruptedState;
-            if (intervalType == IntervalType.ShortBreak || intervalType == IntervalType.LongBreak) return breakInterruptedState;
+            if (intervalType == IntervalType.ShortBreak) return shortBreakInterruptedState;
+            if (intervalType == IntervalType.LongBreak) return longBreakInterruptedState;
             throw new ArgumentException($"Unknown interval type: {intervalType}");
         }
 
@@ -222,8 +226,8 @@ namespace Tomighty.Windows.Timer
 
                 window.UpdateTitle("Idle");
                 window.UpdateColorScheme(TimerWindow.DarkGray);
-                window.UpdateTimeDisplay(Duration.Zero.ToTimeString());
-                window.SetTimerAction("Start Pomodoro", StartTimer);
+                window.HideTimeDisplay();
+                window.SetTimerAction("Start Pomodoro", StartTimer, ModernTheme.NeutralActionButtonBackColor);
             }
 
             private void StartTimer()
@@ -249,7 +253,7 @@ namespace Tomighty.Windows.Timer
                 window.UpdateTitle("Pomodoro");
                 window.UpdateColorScheme(TimerWindow.Red);
                 window.UpdateTimeDisplay(remainingTime.ToTimeString());
-                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer);
+                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.ActionButtonBackColor);
             }
         }
 
@@ -270,7 +274,7 @@ namespace Tomighty.Windows.Timer
                 window.UpdateTitle("Short Break");
                 window.UpdateColorScheme(TimerWindow.Green);
                 window.UpdateTimeDisplay(remainingTime.ToTimeString());
-                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer);
+                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.BreakActionButtonBackColor);
             }
         }
 
@@ -291,7 +295,7 @@ namespace Tomighty.Windows.Timer
                 window.UpdateTitle("Long Break");
                 window.UpdateColorScheme(TimerWindow.Blue);
                 window.UpdateTimeDisplay(remainingTime.ToTimeString());
-                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer);
+                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.BreakActionButtonBackColor);
             }
         }
 
@@ -311,13 +315,24 @@ namespace Tomighty.Windows.Timer
 
                 window.UpdateTitle("Pomodoro Completed");
                 window.UpdateColorScheme(TimerWindow.DarkGray);
-                window.UpdateTimeDisplay(Duration.Zero.ToTimeString());
-                window.SetTimerAction($"Start {pomodoroEngine.SuggestedBreakType.GetName()}", StartTimer);
+                window.HideTimeDisplay();
+                window.SetTimerActions(
+                    $"Start {pomodoroEngine.SuggestedBreakType.GetName()}",
+                    StartTimer,
+                    ModernTheme.BreakActionButtonBackColor,
+                    "Skip Break",
+                    StartPomodoro,
+                    ModernTheme.NeutralActionButtonBackColor);
             }
 
             private void StartTimer()
             {
                 pomodoroEngine.StartTimer(pomodoroEngine.SuggestedBreakType);
+            }
+
+            private void StartPomodoro()
+            {
+                pomodoroEngine.StartTimer(IntervalType.Pomodoro);
             }
         }
 
@@ -337,8 +352,8 @@ namespace Tomighty.Windows.Timer
 
                 window.UpdateTitle("Break Finished");
                 window.UpdateColorScheme(TimerWindow.DarkGray);
-                window.UpdateTimeDisplay(Duration.Zero.ToTimeString());
-                window.SetTimerAction("Start Pomodoro", StartTimer);
+                window.HideTimeDisplay();
+                window.SetTimerAction("Start Pomodoro", StartTimer, ModernTheme.NeutralActionButtonBackColor);
             }
 
             private void StartTimer()
@@ -350,11 +365,13 @@ namespace Tomighty.Windows.Timer
         private class TimerInterruptedState : IWindowState
         {
             private readonly string title;
+            private readonly IntervalType restartType;
             private readonly IPomodoroEngine pomodoroEngine;
 
-            public TimerInterruptedState(string title, IPomodoroEngine pomodoroEngine)
+            public TimerInterruptedState(string title, IntervalType restartType, IPomodoroEngine pomodoroEngine)
             {
                 this.title = title;
+                this.restartType = restartType;
                 this.pomodoroEngine = pomodoroEngine;
             }
 
@@ -365,13 +382,13 @@ namespace Tomighty.Windows.Timer
 
                 window.UpdateTitle(title);
                 window.UpdateColorScheme(TimerWindow.DarkGray);
-                window.UpdateTimeDisplay(remainingTime.ToTimeString());
-                window.SetTimerAction("Start Pomodoro", StartTimer);
+                window.HideTimeDisplay();
+                window.SetTimerAction("Restart", StartTimer, ModernTheme.NeutralActionButtonBackColor);
             }
 
             private void StartTimer()
             {
-                pomodoroEngine.StartTimer(IntervalType.Pomodoro);
+                pomodoroEngine.StartTimer(restartType);
             }
         }
 

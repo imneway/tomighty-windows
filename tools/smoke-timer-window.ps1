@@ -39,11 +39,18 @@ if (-not (Test-Path $csc)) {
     /reference:"$appOutput\Tomighty.Windows.exe" `
     $hostSource
 
+if ($LASTEXITCODE -ne 0) {
+    throw "TimerSmokeHost compilation failed with exit code $LASTEXITCODE."
+}
+
 Copy-Item -Path $hostConfig -Destination "$hostExe.config" -Force
 
 Push-Location $appOutput
 try {
     & $hostExe $Output
+    if ($LASTEXITCODE -ne 0) {
+        throw "TimerSmokeHost failed with exit code $LASTEXITCODE."
+    }
 }
 finally {
     Pop-Location

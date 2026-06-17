@@ -12,6 +12,10 @@ namespace Tomighty.Tools
 {
     internal static class TimerSmokeHost
     {
+        private static readonly Color ActionButtonBackColor = Color.FromArgb(197, 47, 61);
+        private static readonly Color BreakActionButtonBackColor = Color.FromArgb(0, 155, 59);
+        private static readonly Color NeutralActionButtonBackColor = Color.FromArgb(133, 137, 145);
+
         [STAThread]
         private static int Main(string[] args)
         {
@@ -48,17 +52,21 @@ namespace Tomighty.Tools
         {
             var outputDirectory = Path.Combine(Path.GetDirectoryName(primaryOutput), "timer-window-states");
             Directory.CreateDirectory(outputDirectory);
+            foreach (var stalePng in Directory.GetFiles(outputDirectory, "*.png"))
+                File.Delete(stalePng);
 
             var shots = new[]
             {
-                new TimerStateShot("01-pomodoro", "Pomodoro", "25:00", "Interrupt", Color.FromArgb(197, 47, 61)),
-                new TimerStateShot("02-short-break", "Short Break", "05:00", "Interrupt", Color.FromArgb(197, 47, 61)),
-                new TimerStateShot("03-long-break", "Long Break", "15:00", "Interrupt", Color.FromArgb(197, 47, 61)),
-                new TimerStateShot("04-idle", "Idle", "00:00", "Start Pomodoro", Color.FromArgb(197, 47, 61)),
-                new TimerStateShot("05-pomodoro-completed", "Pomodoro Completed", "00:00", "Start Short break", Color.FromArgb(197, 47, 61)),
-                new TimerStateShot("06-break-finished", "Break Finished", "00:00", "Start Pomodoro", Color.FromArgb(197, 47, 61)),
-                new TimerStateShot("07-pomodoro-interrupted", "Pomodoro Interrupted", "13:24", "Start Pomodoro", Color.FromArgb(197, 47, 61)),
-                new TimerStateShot("08-break-interrupted", "Break Interrupted", "03:18", "Start Pomodoro", Color.FromArgb(197, 47, 61))
+                TimerStateShot.Timed("01-pomodoro", "Pomodoro", "25:00", "Interrupt", ActionButtonBackColor),
+                TimerStateShot.Timed("02-short-break", "Short Break", "05:00", "Interrupt", BreakActionButtonBackColor),
+                TimerStateShot.Timed("03-long-break", "Long Break", "15:00", "Interrupt", BreakActionButtonBackColor),
+                TimerStateShot.Message("04-idle", "Idle", "Start Pomodoro", NeutralActionButtonBackColor),
+                TimerStateShot.Message("05-pomodoro-completed-short", "Pomodoro Completed", "Start Short break", BreakActionButtonBackColor, "Skip Break", NeutralActionButtonBackColor),
+                TimerStateShot.Message("06-pomodoro-completed-long", "Pomodoro Completed", "Start Long break", BreakActionButtonBackColor, "Skip Break", NeutralActionButtonBackColor),
+                TimerStateShot.Message("07-break-finished", "Break Finished", "Start Pomodoro", NeutralActionButtonBackColor),
+                TimerStateShot.Message("08-pomodoro-interrupted", "Pomodoro Interrupted", "Restart", NeutralActionButtonBackColor),
+                TimerStateShot.Message("09-short-break-interrupted", "Short Break Interrupted", "Restart", NeutralActionButtonBackColor),
+                TimerStateShot.Message("10-long-break-interrupted", "Long Break Interrupted", "Restart", NeutralActionButtonBackColor)
             };
 
             var images = new Bitmap[shots.Length];
@@ -99,9 +107,17 @@ namespace Tomighty.Tools
         {
             var form = new TimerWindow();
             form.UpdateTitle(shot.Title);
-            form.UpdateTimeDisplay(shot.Time);
+            if (shot.ShowTime)
+                form.UpdateTimeDisplay(shot.Time);
+            else
+                form.HideTimeDisplay();
+
             form.UpdateColorScheme(shot.AccentColor);
-            form.SetTimerAction(shot.ActionText, () => { });
+            if (shot.HasSecondaryAction)
+                form.SetTimerActions(shot.PrimaryActionText, () => { }, shot.PrimaryActionColor, shot.SecondaryActionText, () => { }, shot.SecondaryActionColor);
+            else
+                form.SetTimerAction(shot.PrimaryActionText, () => { }, shot.PrimaryActionColor);
+
             form.StartPosition = FormStartPosition.Manual;
 
             if (!form.IsHandleCreated && form.Handle == IntPtr.Zero)
@@ -125,8 +141,17 @@ namespace Tomighty.Tools
             const int columns = 2;
             const int gap = 24;
             var rows = (int)Math.Ceiling(images.Length / (double)columns);
-            var cellWidth = images[0].Width;
-            var cellHeight = images[0].Height;
+            var cellWidth = 0;
+            var cellHeight = 0;
+            for (var index = 0; index < images.Length; index++)
+            {
+                if (images[index] == null)
+                    continue;
+
+                cellWidth = Math.Max(cellWidth, images[index].Width);
+                cellHeight = Math.Max(cellHeight, images[index].Height);
+            }
+
             var width = columns * cellWidth + (columns + 1) * gap;
             var height = rows * cellHeight + (rows + 1) * gap;
 
@@ -141,7 +166,7 @@ namespace Tomighty.Tools
                     var row = index / columns;
                     var x = gap + column * (cellWidth + gap);
                     var y = gap + row * (cellHeight + gap);
-                    graphics.DrawImageUnscaled(images[index], x, y);
+                    graphics.DrawImageUnscaled(images[index], x + (cellWidth - images[index].Width) / 2, y);
                 }
 
                 sheet.Save(output, ImageFormat.Png);
@@ -153,16 +178,41 @@ namespace Tomighty.Tools
             public readonly string FileName;
             public readonly string Title;
             public readonly string Time;
-            public readonly string ActionText;
+            public readonly bool ShowTime;
             public readonly Color AccentColor;
+            public readonly string PrimaryActionText;
+            public readonly Color PrimaryActionColor;
+            public readonly string SecondaryActionText;
+            public readonly Color SecondaryActionColor;
 
-            public TimerStateShot(string fileName, string title, string time, string actionText, Color accentColor)
+            private TimerStateShot(string fileName, string title, string time, bool showTime, Color accentColor, string primaryActionText, Color primaryActionColor, string secondaryActionText, Color secondaryActionColor)
             {
                 FileName = fileName;
                 Title = title;
                 Time = time;
-                ActionText = actionText;
+                ShowTime = showTime;
                 AccentColor = accentColor;
+                PrimaryActionText = primaryActionText;
+                PrimaryActionColor = primaryActionColor;
+                SecondaryActionText = secondaryActionText;
+                SecondaryActionColor = secondaryActionColor;
+            }
+
+            public bool HasSecondaryAction => !string.IsNullOrEmpty(SecondaryActionText);
+
+            public static TimerStateShot Timed(string fileName, string title, string time, string actionText, Color actionColor)
+            {
+                return new TimerStateShot(fileName, title, time, true, actionColor, actionText, actionColor, "", NeutralActionButtonBackColor);
+            }
+
+            public static TimerStateShot Message(string fileName, string title, string primaryActionText, Color primaryActionColor)
+            {
+                return Message(fileName, title, primaryActionText, primaryActionColor, "", NeutralActionButtonBackColor);
+            }
+
+            public static TimerStateShot Message(string fileName, string title, string primaryActionText, Color primaryActionColor, string secondaryActionText, Color secondaryActionColor)
+            {
+                return new TimerStateShot(fileName, title, "", false, primaryActionColor, primaryActionText, primaryActionColor, secondaryActionText, secondaryActionColor);
             }
         }
 

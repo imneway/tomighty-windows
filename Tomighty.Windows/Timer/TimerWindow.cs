@@ -28,28 +28,39 @@ namespace Tomighty.Windows.Timer
         private const int CompactPadding = 8;
         private const int ActionButtonWidth = 180;
         private const int ActionButtonHeight = 36;
+        private const int ActionButtonGap = 8;
         private const int TitleHeight = 20;
         private const int DropDownSize = 30;
         private const int TimeVerticalMargin = 14;
         private const int TimeTop = CompactPadding + TitleHeight + TimeVerticalMargin;
         private const int TimeHeight = 48;
+        private const int MessageTitleHeight = 72;
         private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
         private const int CompactHeight = CompactPadding + TitleHeight + TimeVerticalMargin + TimeHeight + TimeVerticalMargin + ActionButtonHeight + CompactPadding;
+        private const int CompactMessageHeight = CompactPadding + MessageTitleHeight + ActionButtonHeight + CompactPadding;
+        private const int CompactDualActionHeight = CompactPadding + MessageTitleHeight + ActionButtonHeight * 2 + ActionButtonGap + CompactPadding;
         private const int WindowCornerRadius = 20;
         private const int ActionButtonCornerRadius = 8;
 
-        private Action currentTimerAction;
+        private Action primaryTimerAction;
+        private Action secondaryTimerAction;
         private bool pinned;
         private bool closeButtonPressed;
-        private bool actionButtonHovered;
-        private bool actionButtonPressed;
+        private bool primaryActionButtonHovered;
+        private bool primaryActionButtonPressed;
+        private bool secondaryActionButtonHovered;
+        private bool secondaryActionButtonPressed;
+        private bool timeDisplayVisible = true;
         private string titleText = "Title";
         private string timeText = "--:--";
+        private string primaryActionText = "Timer Action";
+        private string secondaryActionText = "";
+        private Color primaryActionButtonColor = ModernTheme.ActionButtonBackColor;
+        private Color secondaryActionButtonColor = ModernTheme.NeutralActionButtonBackColor;
         private float layoutScale = 1f;
 
         private readonly Action<string> UpdateTimeDisplayDelegate;
         private readonly Action<string> UpdateTitleDelegate;
-        private readonly Action<string, Action> UpdateTimerButtonTextDelegate;
 
         public TimerWindow()
         {
@@ -78,21 +89,18 @@ namespace Tomighty.Windows.Timer
 
             UpdateTimeDisplayDelegate = (text) =>
             {
+                timeDisplayVisible = true;
                 timeText = text;
                 timeLabel.Text = text;
-                Invalidate(timeLabel.Bounds);
+                ApplyCompactWindowSize();
+                UpdateCompactBounds();
+                Invalidate();
             };
             UpdateTitleDelegate = (text) =>
             {
                 titleText = text;
                 titleLabel.Text = text;
-                Invalidate(titleLabel.Bounds);
-            };
-            UpdateTimerButtonTextDelegate = (text, action) =>
-            {
-                timerButton.Text = text;
-                timerButton.AccessibleName = text;
-                Invalidate(GetActionButtonBounds());
+                Invalidate();
             };
         }
 
@@ -109,12 +117,23 @@ namespace Tomighty.Windows.Timer
 
         public void SetTimerAction(string text, Action action)
         {
-            currentTimerAction = action;
+            SetTimerAction(text, action, ModernTheme.ActionButtonBackColor);
+        }
 
+        public void SetTimerAction(string text, Action action, Color color)
+        {
             if (IsHandleCreated)
-                timerButton.BeginInvoke(UpdateTimerButtonTextDelegate, text, action);
+                BeginInvoke(new Action(() => ApplyTimerActions(text, action, color, "", null, ModernTheme.NeutralActionButtonBackColor)));
             else
-                UpdateTimerButtonTextDelegate(text, action);
+                ApplyTimerActions(text, action, color, "", null, ModernTheme.NeutralActionButtonBackColor);
+        }
+
+        public void SetTimerActions(string primaryText, Action primaryAction, Color primaryColor, string secondaryText, Action secondaryAction, Color secondaryColor)
+        {
+            if (IsHandleCreated)
+                BeginInvoke(new Action(() => ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor)));
+            else
+                ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor);
         }
 
         public void UpdateTimeDisplay(string text)
@@ -125,8 +144,48 @@ namespace Tomighty.Windows.Timer
                 UpdateTimeDisplayDelegate(text);
         }
 
+        public void HideTimeDisplay()
+        {
+            if (IsHandleCreated)
+                BeginInvoke(new Action(ApplyHiddenTimeDisplay));
+            else
+                ApplyHiddenTimeDisplay();
+        }
+
         public void UpdateColorScheme(Color color)
         {
+            Invalidate();
+        }
+
+        private void ApplyTimerActions(string primaryText, Action primaryAction, Color primaryColor, string secondaryText, Action secondaryAction, Color secondaryColor)
+        {
+            primaryActionText = primaryText;
+            primaryTimerAction = primaryAction;
+            primaryActionButtonColor = primaryColor;
+            secondaryActionText = secondaryText ?? "";
+            secondaryTimerAction = secondaryAction;
+            secondaryActionButtonColor = secondaryColor;
+            primaryActionButtonHovered = false;
+            primaryActionButtonPressed = false;
+            secondaryActionButtonHovered = false;
+            secondaryActionButtonPressed = false;
+
+            timerButton.Text = primaryText;
+            timerButton.AccessibleName = string.IsNullOrEmpty(secondaryActionText)
+                ? primaryText
+                : primaryText + ", " + secondaryActionText;
+
+            ApplyCompactWindowSize();
+            UpdateCompactBounds();
+            Invalidate();
+        }
+
+        private void ApplyHiddenTimeDisplay()
+        {
+            timeDisplayVisible = false;
+            timeLabel.Text = "";
+            ApplyCompactWindowSize();
+            UpdateCompactBounds();
             Invalidate();
         }
 
@@ -151,7 +210,7 @@ namespace Tomighty.Windows.Timer
 
         private void ApplyCompactWindowSize()
         {
-            var compactSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(CompactHeight));
+            var compactSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(GetCompactHeight()));
             if (Size != compactSize)
                 Size = compactSize;
 
@@ -170,7 +229,7 @@ namespace Tomighty.Windows.Timer
             titleLabel.Bounds = GetTitleBounds();
             timeLabel.Bounds = GetTimeBounds();
             closeButton.Bounds = GetDropDownBounds();
-            timerButton.Bounds = GetActionButtonBounds();
+            timerButton.Bounds = GetPrimaryActionButtonBounds();
         }
 
         public void UpdatePinButtonState(bool pinned)
@@ -195,10 +254,17 @@ namespace Tomighty.Windows.Timer
                     return;
                 }
 
-                if (GetActionButtonBounds().Contains(e.Location))
+                if (GetPrimaryActionButtonBounds().Contains(e.Location))
                 {
-                    actionButtonPressed = true;
-                    Invalidate(GetActionButtonBounds());
+                    primaryActionButtonPressed = true;
+                    Invalidate(GetPrimaryActionButtonBounds());
+                    return;
+                }
+
+                if (HasSecondaryAction && GetSecondaryActionButtonBounds().Contains(e.Location))
+                {
+                    secondaryActionButtonPressed = true;
+                    Invalidate(GetSecondaryActionButtonBounds());
                     return;
                 }
 
@@ -224,14 +290,26 @@ namespace Tomighty.Windows.Timer
                 return;
             }
 
-            if (e.Button == MouseButtons.Left && actionButtonPressed)
+            if (e.Button == MouseButtons.Left && primaryActionButtonPressed)
             {
-                var bounds = GetActionButtonBounds();
-                actionButtonPressed = false;
+                var bounds = GetPrimaryActionButtonBounds();
+                primaryActionButtonPressed = false;
                 Invalidate(bounds);
 
                 if (bounds.Contains(e.Location))
-                    currentTimerAction?.Invoke();
+                    primaryTimerAction?.Invoke();
+
+                return;
+            }
+
+            if (e.Button == MouseButtons.Left && secondaryActionButtonPressed)
+            {
+                var bounds = GetSecondaryActionButtonBounds();
+                secondaryActionButtonPressed = false;
+                Invalidate(bounds);
+
+                if (bounds.Contains(e.Location))
+                    secondaryTimerAction?.Invoke();
 
                 return;
             }
@@ -243,22 +321,32 @@ namespace Tomighty.Windows.Timer
         {
             base.OnMouseMove(e);
 
-            var bounds = GetActionButtonBounds();
-            var hovered = bounds.Contains(e.Location);
+            var primaryBounds = GetPrimaryActionButtonBounds();
+            var primaryHovered = primaryBounds.Contains(e.Location);
+            var secondaryBounds = GetSecondaryActionButtonBounds();
+            var secondaryHovered = HasSecondaryAction && secondaryBounds.Contains(e.Location);
 
-            if (hovered == actionButtonHovered)
+            if (primaryHovered == primaryActionButtonHovered && secondaryHovered == secondaryActionButtonHovered)
                 return;
 
-            actionButtonHovered = hovered;
-            Invalidate(bounds);
+            primaryActionButtonHovered = primaryHovered;
+            secondaryActionButtonHovered = secondaryHovered;
+            Invalidate(primaryBounds);
+            if (HasSecondaryAction)
+                Invalidate(secondaryBounds);
         }
 
         protected override void OnMouseLeave(EventArgs e)
         {
-            var bounds = GetActionButtonBounds();
-            actionButtonHovered = false;
-            actionButtonPressed = false;
-            Invalidate(bounds);
+            var primaryBounds = GetPrimaryActionButtonBounds();
+            var secondaryBounds = GetSecondaryActionButtonBounds();
+            primaryActionButtonHovered = false;
+            primaryActionButtonPressed = false;
+            secondaryActionButtonHovered = false;
+            secondaryActionButtonPressed = false;
+            Invalidate(primaryBounds);
+            if (HasSecondaryAction)
+                Invalidate(secondaryBounds);
 
             base.OnMouseLeave(e);
         }
@@ -295,16 +383,32 @@ namespace Tomighty.Windows.Timer
             e.Graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
-            DrawAlignedText(e.Graphics, titleText, titleLabel.Font, GetTitleBounds(), StringAlignment.Center, StringAlignment.Center);
-            DrawAlignedText(e.Graphics, timeText, timeLabel.Font, GetTimeBounds(), StringAlignment.Center, StringAlignment.Center);
+            if (timeDisplayVisible)
+            {
+                DrawAlignedText(e.Graphics, titleText, titleLabel.Font, GetTitleBounds(), StringAlignment.Center, StringAlignment.Center);
+                DrawAlignedText(e.Graphics, timeText, timeLabel.Font, GetTimeBounds(), StringAlignment.Center, StringAlignment.Center);
+            }
+            else
+            {
+                using (var messageFont = ModernTheme.TextFont(13f))
+                {
+                    DrawAlignedText(e.Graphics, titleText, messageFont, GetMessageTitleBounds(), StringAlignment.Center, StringAlignment.Center, false);
+                }
+            }
+
             DrawDropDownArrow(e.Graphics, GetDropDownBounds());
-            DrawActionButton(e.Graphics);
+            DrawActionButtons(e.Graphics);
         }
 
         private void DrawAlignedText(Graphics graphics, string text, Font font, Rectangle bounds, StringAlignment alignment, StringAlignment lineAlignment)
         {
+            DrawAlignedText(graphics, text, font, bounds, alignment, lineAlignment, true);
+        }
+
+        private void DrawAlignedText(Graphics graphics, string text, Font font, Rectangle bounds, StringAlignment alignment, StringAlignment lineAlignment, bool noWrap)
+        {
             using (var brush = new SolidBrush(ModernTheme.TimerTextColor))
-            using (var format = new StringFormat(StringFormatFlags.NoWrap))
+            using (var format = noWrap ? new StringFormat(StringFormatFlags.NoWrap) : new StringFormat())
             {
                 format.Alignment = alignment;
                 format.LineAlignment = lineAlignment;
@@ -325,24 +429,61 @@ namespace Tomighty.Windows.Timer
             return new Rectangle(padding, padding, ClientSize.Width - padding * 2, ScaleLayout(TitleHeight));
         }
 
+        private Rectangle GetMessageTitleBounds()
+        {
+            var padding = ScaleLayout(CompactPadding);
+            var actionTop = GetFirstActionButtonTop();
+            return new Rectangle(padding, padding, ClientSize.Width - padding * 2, Math.Max(ScaleLayout(TitleHeight), actionTop - padding * 2));
+        }
+
         private Rectangle GetTimeBounds()
         {
             var padding = ScaleLayout(CompactPadding);
             return new Rectangle(padding, ScaleLayout(TimeTop), ClientSize.Width - padding * 2, ScaleLayout(TimeHeight));
         }
 
-        private Rectangle GetActionButtonBounds()
+        private Rectangle GetPrimaryActionButtonBounds()
         {
             var padding = ScaleLayout(CompactPadding);
             var width = Math.Min(ScaleLayout(ActionButtonWidth), ClientSize.Width - padding * 2);
             var height = ScaleLayout(ActionButtonHeight);
-            return new Rectangle((ClientSize.Width - width) / 2, ClientSize.Height - padding - height, width, height);
+            return new Rectangle((ClientSize.Width - width) / 2, GetFirstActionButtonTop(), width, height);
+        }
+
+        private Rectangle GetSecondaryActionButtonBounds()
+        {
+            var padding = ScaleLayout(CompactPadding);
+            var width = Math.Min(ScaleLayout(ActionButtonWidth), ClientSize.Width - padding * 2);
+            var height = ScaleLayout(ActionButtonHeight);
+            var y = ClientSize.Height - padding - height;
+            return new Rectangle((ClientSize.Width - width) / 2, y, width, height);
+        }
+
+        private int GetFirstActionButtonTop()
+        {
+            var padding = ScaleLayout(CompactPadding);
+            var height = ScaleLayout(ActionButtonHeight);
+
+            if (!HasSecondaryAction)
+                return ClientSize.Height - padding - height;
+
+            return ClientSize.Height - padding - height * 2 - ScaleLayout(ActionButtonGap);
+        }
+
+        private int GetCompactHeight()
+        {
+            if (timeDisplayVisible)
+                return HasSecondaryAction ? CompactHeight + ActionButtonHeight + ActionButtonGap : CompactHeight;
+
+            return HasSecondaryAction ? CompactDualActionHeight : CompactMessageHeight;
         }
 
         private int ScaleLayout(int value)
         {
             return (int)Math.Round(value * layoutScale);
         }
+
+        private bool HasSecondaryAction => !string.IsNullOrWhiteSpace(secondaryActionText) && secondaryTimerAction != null;
 
         private void UpdateWindowRegion()
         {
@@ -371,16 +512,37 @@ namespace Tomighty.Windows.Timer
             return path;
         }
 
-        private void DrawActionButton(Graphics graphics)
+        private void DrawActionButtons(Graphics graphics)
         {
-            var bounds = GetActionButtonBounds();
-            var state = actionButtonPressed
+            DrawActionButton(
+                graphics,
+                GetPrimaryActionButtonBounds(),
+                primaryActionText,
+                primaryActionButtonColor,
+                primaryActionButtonHovered,
+                primaryActionButtonPressed);
+
+            if (HasSecondaryAction)
+            {
+                DrawActionButton(
+                    graphics,
+                    GetSecondaryActionButtonBounds(),
+                    secondaryActionText,
+                    secondaryActionButtonColor,
+                    secondaryActionButtonHovered,
+                    secondaryActionButtonPressed);
+            }
+        }
+
+        private void DrawActionButton(Graphics graphics, Rectangle bounds, string text, Color color, bool hovered, bool pressed)
+        {
+            var state = pressed
                 ? PushButtonState.Pressed
-                : actionButtonHovered
+                : hovered
                     ? PushButtonState.Hot
                     : PushButtonState.Normal;
 
-            DrawActionButtonSurface(graphics, bounds, state);
+            DrawActionButtonSurface(graphics, bounds, state, color);
 
             using (var brush = new SolidBrush(ModernTheme.ActionButtonTextColor))
             using (var format = new StringFormat(StringFormatFlags.NoWrap))
@@ -388,17 +550,17 @@ namespace Tomighty.Windows.Timer
                 format.Alignment = StringAlignment.Center;
                 format.LineAlignment = StringAlignment.Center;
                 format.Trimming = StringTrimming.EllipsisCharacter;
-                graphics.DrawString(timerButton.Text, timerButton.Font, brush, bounds, format);
+                graphics.DrawString(text, timerButton.Font, brush, bounds, format);
             }
         }
 
-        private static void DrawActionButtonSurface(Graphics graphics, Rectangle bounds, PushButtonState state)
+        private static void DrawActionButtonSurface(Graphics graphics, Rectangle bounds, PushButtonState state, Color normalColor)
         {
             var fill = state == PushButtonState.Pressed
-                ? ModernTheme.ActionButtonPressedBackColor
+                ? AdjustColor(normalColor, -36)
                 : state == PushButtonState.Hot
-                    ? ModernTheme.ActionButtonHoverBackColor
-                    : ModernTheme.ActionButtonBackColor;
+                    ? AdjustColor(normalColor, 18)
+                    : normalColor;
 
             var scale = graphics.DpiX / 96f;
             var radius = Math.Max(1f, ActionButtonCornerRadius * scale);
@@ -418,6 +580,20 @@ namespace Tomighty.Windows.Timer
                 graphics.FillPath(brush, path);
                 graphics.DrawPath(border, borderPath);
             }
+        }
+
+        private static Color AdjustColor(Color color, int offset)
+        {
+            return Color.FromArgb(
+                color.A,
+                ClampColor(color.R + offset),
+                ClampColor(color.G + offset),
+                ClampColor(color.B + offset));
+        }
+
+        private static int ClampColor(int value)
+        {
+            return Math.Max(0, Math.Min(255, value));
         }
 
         private float GetCurrentDpiScale()
@@ -560,7 +736,7 @@ namespace Tomighty.Windows.Timer
 
         private void OnTimerButtonClick(object sender, EventArgs e)
         {
-            currentTimerAction?.Invoke();
+            primaryTimerAction?.Invoke();
         }
 
         private void ApplyTheme()

@@ -46,6 +46,8 @@ namespace Tomighty.Windows.UI
         public static Color ActionButtonBackColor => TomatoRed;
         public static Color ActionButtonHoverBackColor => Color.FromArgb(214, 62, 76);
         public static Color ActionButtonPressedBackColor => Color.FromArgb(160, 36, 49);
+        public static Color BreakActionButtonBackColor => Color.FromArgb(0, 155, 59);
+        public static Color NeutralActionButtonBackColor => Color.FromArgb(133, 137, 145);
         public static Color ActionButtonBorderColor => Color.FromArgb(31, 0, 0, 0);
         public static Color ActionButtonTextColor => Color.White;
         public static Color InputBackColor => IsLightTheme ? SystemColors.Window : Color.FromArgb(32, 32, 32);
