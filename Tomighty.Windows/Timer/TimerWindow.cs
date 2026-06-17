@@ -36,7 +36,7 @@ namespace Tomighty.Windows.Timer
         private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
         private const int CompactHeight = CompactPadding + TitleHeight + TimeVerticalMargin + TimeHeight + TimeVerticalMargin + ActionButtonHeight + CompactPadding;
         private const int WindowCornerRadius = 20;
-        private const int ActionButtonCornerRadius = WindowCornerRadius - CompactPadding;
+        private const int ActionButtonCornerRadius = 8;
 
         private Action currentTimerAction;
         private bool pinned;
