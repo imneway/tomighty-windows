@@ -7,6 +7,7 @@
 
 using System;
 using System.Drawing;
+using System.Drawing.Text;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
@@ -15,9 +16,12 @@ namespace Tomighty.Windows.UI
     internal static class ModernTheme
     {
         private const string TextFontName = "Segoe UI";
+        private const string TextSemiBoldFontName = "Segoe UI Semibold";
+        private const string TimerDisplayFontName = "OPPO Sans 4.0 EN";
         private static readonly Color CommandPaletteDarkBaseColor = Color.FromArgb(32, 32, 32);
         private static readonly Color CommandPaletteLightBaseColor = Color.FromArgb(243, 243, 243);
         private static readonly Color TomatoRed = Color.FromArgb(197, 47, 61);
+        private static readonly Lazy<bool> TimerDisplayFontAvailable = new Lazy<bool>(() => IsFontInstalled(TimerDisplayFontName));
 
         public static bool IsLightTheme => ReadAppsUseLightTheme();
         public static bool IsDarkTheme => !IsLightTheme;
@@ -44,15 +48,22 @@ namespace Tomighty.Windows.UI
         public static Color InputBackColor => IsLightTheme ? SystemColors.Window : Color.FromArgb(32, 32, 32);
         public static Color MenuBackColor => IsLightTheme ? SystemColors.Menu : Color.FromArgb(32, 32, 32);
         public static Color MenuTextColor => IsLightTheme ? SystemColors.MenuText : TextColor;
+        public static bool IsTimerDisplayFontAvailable => TimerDisplayFontAvailable.Value;
 
         public static Font TextFont(float size = 9f, FontStyle style = FontStyle.Regular)
         {
             return new Font(TextFontName, size, style, GraphicsUnit.Point);
         }
 
+        public static Font SemiBoldTextFont(float size = 9f)
+        {
+            return new Font(TextSemiBoldFontName, size, FontStyle.Regular, GraphicsUnit.Point);
+        }
+
         public static Font DisplayFont(float size, FontStyle style = FontStyle.Regular)
         {
-            return new Font(TextFontName, size, style, GraphicsUnit.Point);
+            var fontName = IsTimerDisplayFontAvailable ? TimerDisplayFontName : TextFontName;
+            return new Font(fontName, size, style, GraphicsUnit.Point);
         }
 
         public static void ApplyMicaDialog(Form form)
@@ -259,6 +270,26 @@ namespace Tomighty.Windows.UI
             {
                 return true;
             }
+        }
+
+        private static bool IsFontInstalled(string fontName)
+        {
+            try
+            {
+                using (var fonts = new InstalledFontCollection())
+                {
+                    foreach (var family in fonts.Families)
+                    {
+                        if (string.Equals(family.Name, fontName, StringComparison.OrdinalIgnoreCase))
+                            return true;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return false;
         }
 
         private class NativeToolStripRenderer : ToolStripProfessionalRenderer

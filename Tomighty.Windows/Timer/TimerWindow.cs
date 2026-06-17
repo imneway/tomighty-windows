@@ -25,6 +25,15 @@ namespace Tomighty.Windows.Timer
 
         private const int WM_NCLBUTTONDOWN = 0x00A1;
         private const int HTCAPTION = 0x0002;
+        private const int CompactWidth = 220;
+        private const int CompactHeight = 150;
+        private const int CompactPadding = 8;
+        private const int TitleHeight = 24;
+        private const int DropDownSize = 28;
+        private const int TimeTop = 35;
+        private const int TimeHeight = 66;
+        private const int ActionButtonHeight = 32;
+        private const int ActionButtonCornerRadius = 4;
 
         private Action currentTimerAction;
         private bool pinned;
@@ -50,9 +59,11 @@ namespace Tomighty.Windows.Timer
 
             Icon = Properties.Resources.icon_tomato_red;
 
-            titleLabel.Font = ModernTheme.TextFont(10f);
-            timeLabel.Font = ModernTheme.DisplayFont(50f);
-            timerButton.Font = ModernTheme.TextFont(9.5f);
+            titleLabel.Font = ModernTheme.SemiBoldTextFont(10.5f);
+            timeLabel.Font = ModernTheme.DisplayFont(44f);
+            timerButton.Font = ModernTheme.SemiBoldTextFont(9.5f);
+            ApplyCompactWindowSize();
+            UpdateCompactBounds();
 
             titleLabel.Visible = false;
             timeLabel.Visible = false;
@@ -109,6 +120,29 @@ namespace Tomighty.Windows.Timer
         public void UpdateColorScheme(Color color)
         {
             Invalidate();
+        }
+
+        protected override void OnClientSizeChanged(EventArgs e)
+        {
+            base.OnClientSizeChanged(e);
+
+            if (IsHandleCreated)
+                UpdateCompactBounds();
+        }
+
+        private void ApplyCompactWindowSize()
+        {
+            var compactSize = new Size(CompactWidth, CompactHeight);
+            if (ClientSize != compactSize)
+                ClientSize = compactSize;
+        }
+
+        private void UpdateCompactBounds()
+        {
+            titleLabel.Bounds = GetTitleBounds();
+            timeLabel.Bounds = GetTimeBounds();
+            closeButton.Bounds = GetDropDownBounds();
+            timerButton.Bounds = GetActionButtonBounds();
         }
 
         public void UpdatePinButtonState(bool pinned)
@@ -193,8 +227,8 @@ namespace Tomighty.Windows.Timer
             e.Graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
-            DrawAlignedText(e.Graphics, titleText, titleLabel.Font, titleLabel.Bounds, StringAlignment.Center, StringAlignment.Center);
-            DrawAlignedText(e.Graphics, timeText, timeLabel.Font, timeLabel.Bounds, StringAlignment.Center, StringAlignment.Center);
+            DrawAlignedText(e.Graphics, titleText, titleLabel.Font, GetTitleBounds(), StringAlignment.Center, StringAlignment.Center);
+            DrawAlignedText(e.Graphics, timeText, timeLabel.Font, GetTimeBounds(), StringAlignment.Center, StringAlignment.Center);
             DrawDropDownArrow(e.Graphics, GetDropDownBounds());
         }
 
@@ -212,7 +246,22 @@ namespace Tomighty.Windows.Timer
 
         private Rectangle GetDropDownBounds()
         {
-            return closeButton.Bounds;
+            return new Rectangle(ClientSize.Width - CompactPadding - DropDownSize, CompactPadding, DropDownSize, TitleHeight);
+        }
+
+        private Rectangle GetTitleBounds()
+        {
+            return new Rectangle(CompactPadding, CompactPadding, ClientSize.Width - CompactPadding * 2, TitleHeight);
+        }
+
+        private Rectangle GetTimeBounds()
+        {
+            return new Rectangle(CompactPadding, TimeTop, ClientSize.Width - CompactPadding * 2, TimeHeight);
+        }
+
+        private Rectangle GetActionButtonBounds()
+        {
+            return new Rectangle(CompactPadding, ClientSize.Height - CompactPadding - ActionButtonHeight, ClientSize.Width - CompactPadding * 2, ActionButtonHeight);
         }
 
         private void DrawDropDownArrow(Graphics graphics, Rectangle bounds)
@@ -455,8 +504,9 @@ namespace Tomighty.Windows.Timer
 
             protected override void OnPaint(PaintEventArgs e)
             {
-                e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+                e.Graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
                 e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
+                e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
                 var bounds = new Rectangle(0, 0, Width, Height);
                 var state = GetState();
@@ -464,8 +514,14 @@ namespace Tomighty.Windows.Timer
                 DrawButtonSurface(e.Graphics, bounds, state);
 
                 var textColor = Enabled ? ModernTheme.ActionButtonTextColor : ModernTheme.SecondaryTextColor;
-                var flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
-                TextRenderer.DrawText(e.Graphics, Text, Font, bounds, textColor, flags);
+                using (var brush = new SolidBrush(textColor))
+                using (var format = new StringFormat(StringFormatFlags.NoWrap))
+                {
+                    format.Alignment = StringAlignment.Center;
+                    format.LineAlignment = StringAlignment.Center;
+                    format.Trimming = StringTrimming.EllipsisCharacter;
+                    e.Graphics.DrawString(Text, Font, brush, bounds, format);
+                }
 
                 if (Focused && ShowFocusCues)
                 {
@@ -496,12 +552,30 @@ namespace Tomighty.Windows.Timer
                         ? ModernTheme.ActionButtonHoverBackColor
                         : ModernTheme.ActionButtonBackColor;
 
+                var radius = Math.Max(1f, ActionButtonCornerRadius * graphics.DpiX / 96f);
+                var pathBounds = new RectangleF(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
+
+                using (var path = CreateRoundedRectangle(pathBounds, radius))
                 using (var brush = new SolidBrush(fill))
                 using (var border = new Pen(ModernTheme.ActionButtonBorderColor))
                 {
-                    graphics.FillRectangle(brush, bounds);
-                    graphics.DrawRectangle(border, 0, 0, bounds.Width - 1, bounds.Height - 1);
+                    graphics.FillPath(brush, path);
+                    graphics.DrawPath(border, path);
                 }
+            }
+
+            private static GraphicsPath CreateRoundedRectangle(RectangleF bounds, float radius)
+            {
+                var diameter = radius * 2f;
+                var path = new GraphicsPath();
+
+                path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+                path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+                path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+                path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+                path.CloseFigure();
+
+                return path;
             }
         }
 
