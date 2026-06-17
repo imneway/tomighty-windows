@@ -25,14 +25,14 @@ namespace Tomighty.Windows.Timer
 
         private const int WM_NCLBUTTONDOWN = 0x00A1;
         private const int HTCAPTION = 0x0002;
-        private const int CompactWidth = 280;
-        private const int CompactHeight = 152;
         private const int CompactPadding = 8;
-        private const int TitleHeight = 26;
-        private const int DropDownSize = 30;
-        private const int TimeTop = 40;
-        private const int TimeHeight = 66;
         private const int ActionButtonWidth = 200;
+        private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
+        private const int CompactHeight = 144;
+        private const int TitleHeight = 22;
+        private const int DropDownSize = 30;
+        private const int TimeTop = 36;
+        private const int TimeHeight = 56;
         private const int ActionButtonHeight = 34;
         private const int ActionButtonCornerRadius = 4;
 
@@ -143,15 +143,15 @@ namespace Tomighty.Windows.Timer
         private void ApplyCompactWindowSize()
         {
             var compactSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(CompactHeight));
-            if (ClientSize != compactSize)
-                ClientSize = compactSize;
+            if (Size != compactSize)
+                Size = compactSize;
         }
 
         private void ApplyCompactFonts()
         {
-            titleLabel.Font = ModernTheme.SemiBoldTextFont(11f);
-            timeLabel.Font = ModernTheme.DisplayMediumFont(42f);
-            timerButton.Font = ModernTheme.SemiBoldTextFont(9.5f);
+            titleLabel.Font = ModernTheme.TextFont(9.5f);
+            timeLabel.Font = ModernTheme.DisplayFont(42f);
+            timerButton.Font = ModernTheme.TextFont(9.5f);
         }
 
         private void UpdateCompactBounds()
@@ -215,10 +215,7 @@ namespace Tomighty.Windows.Timer
 
             if (Windows11Backdrop.IsSupported)
             {
-                using (var brush = new SolidBrush(ModernTheme.TimerWindowTintColor))
-                {
-                    e.Graphics.FillRectangle(brush, ClientRectangle);
-                }
+                // Let the DWM Acrylic backdrop show through instead of flattening it with GDI paint.
             }
             else
             {
