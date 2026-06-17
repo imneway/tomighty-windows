@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -23,14 +24,19 @@ namespace Tomighty.Tools
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            using (var backdrop = new AcrylicProbeBackdrop())
             using (var form = new TimerWindow())
             {
+                backdrop.StartPosition = FormStartPosition.Manual;
+                backdrop.Location = new Point(40, 40);
+                backdrop.Show();
+
                 form.UpdateTitle("Pomodoro");
                 form.UpdateTimeDisplay("25:00");
                 form.UpdateColorScheme(Color.FromArgb(197, 47, 61));
                 form.SetTimerAction("Interrupt", () => { });
                 form.StartPosition = FormStartPosition.Manual;
-                form.Location = new Point(80, 80);
+                form.Location = new Point(120, 120);
                 form.Show();
 
                 Application.DoEvents();
@@ -39,9 +45,33 @@ namespace Tomighty.Tools
 
                 CaptureWindow(form.Handle, args[0]);
                 form.Close();
+                backdrop.Close();
             }
 
             return 0;
+        }
+
+        private class AcrylicProbeBackdrop : Form
+        {
+            public AcrylicProbeBackdrop()
+            {
+                FormBorderStyle = FormBorderStyle.None;
+                ShowInTaskbar = false;
+                Size = new Size(640, 420);
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                using (var brush = new LinearGradientBrush(ClientRectangle, Color.FromArgb(38, 135, 255), Color.FromArgb(255, 214, 104), LinearGradientMode.ForwardDiagonal))
+                {
+                    e.Graphics.FillRectangle(brush, ClientRectangle);
+                }
+
+                using (var brush = new SolidBrush(Color.FromArgb(190, 93, 64, 255)))
+                {
+                    e.Graphics.FillEllipse(brush, 220, 42, 280, 220);
+                }
+            }
         }
 
         private static void CaptureWindow(IntPtr handle, string output)

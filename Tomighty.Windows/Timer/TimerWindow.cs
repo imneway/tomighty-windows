@@ -28,12 +28,12 @@ namespace Tomighty.Windows.Timer
         private const int CompactPadding = 8;
         private const int ActionButtonWidth = 200;
         private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
-        private const int CompactHeight = 144;
-        private const int TitleHeight = 22;
+        private const int CompactHeight = 176;
+        private const int TitleHeight = 20;
         private const int DropDownSize = 30;
-        private const int TimeTop = 36;
+        private const int TimeTop = 52;
         private const int TimeHeight = 56;
-        private const int ActionButtonHeight = 34;
+        private const int ActionButtonHeight = 36;
         private const int ActionButtonCornerRadius = 4;
 
         private Action currentTimerAction;
@@ -52,7 +52,7 @@ namespace Tomighty.Windows.Timer
             InitializeComponent();
 
             AutoScaleMode = AutoScaleMode.None;
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
             ModernTheme.ApplyTimerWindow(this);
             pinButton.Visible = false;
             pinButton.Enabled = false;
@@ -151,7 +151,7 @@ namespace Tomighty.Windows.Timer
         {
             titleLabel.Font = ModernTheme.TextFont(9.5f);
             timeLabel.Font = ModernTheme.DisplayFont(42f);
-            timerButton.Font = ModernTheme.TextFont(9.5f);
+            timerButton.Font = ModernTheme.MediumTextFont(9.5f);
         }
 
         private void UpdateCompactBounds()
@@ -213,14 +213,7 @@ namespace Tomighty.Windows.Timer
         {
             e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
 
-            if (Windows11Backdrop.IsSupported)
-            {
-                // Let the DWM Acrylic backdrop show through instead of flattening it with GDI paint.
-            }
-            else
-            {
-                e.Graphics.Clear(ModernTheme.TimerWindowBackColor);
-            }
+            DrawAcrylicMaterial(e.Graphics);
 
             using (var pen = new Pen(ModernTheme.BorderColor))
             {
@@ -234,11 +227,81 @@ namespace Tomighty.Windows.Timer
             }
         }
 
+        private void DrawAcrylicMaterial(Graphics graphics)
+        {
+            graphics.Clear(ModernTheme.TimerWindowSurfaceBackColor);
+
+            using (var brush = new LinearGradientBrush(ClientRectangle, ModernTheme.TimerWindowAcrylicStartColor, ModernTheme.TimerWindowAcrylicEndColor, LinearGradientMode.ForwardDiagonal))
+            {
+                graphics.FillRectangle(brush, ClientRectangle);
+            }
+
+            DrawAcrylicColorWash(graphics);
+
+            using (var brush = new SolidBrush(ModernTheme.TimerWindowAcrylicVeilColor))
+            {
+                graphics.FillRectangle(brush, ClientRectangle);
+            }
+
+            DrawAcrylicNoise(graphics);
+        }
+
+        private void DrawAcrylicColorWash(Graphics graphics)
+        {
+            var width = Math.Max(ClientSize.Width, 1);
+            var height = Math.Max(ClientSize.Height, 1);
+
+            DrawAcrylicGlow(
+                graphics,
+                new RectangleF(-width * 0.32f, -height * 0.24f, width * 1.18f, height * 0.98f),
+                ModernTheme.TimerWindowAcrylicBlueWashColor);
+            DrawAcrylicGlow(
+                graphics,
+                new RectangleF(width * 0.20f, height * 0.08f, width * 1.18f, height * 1.10f),
+                ModernTheme.TimerWindowAcrylicVioletWashColor);
+        }
+
+        private void DrawAcrylicGlow(Graphics graphics, RectangleF bounds, Color centerColor)
+        {
+            using (var path = new GraphicsPath())
+            {
+                path.AddEllipse(bounds);
+
+                using (var brush = new PathGradientBrush(path))
+                {
+                    brush.CenterColor = centerColor;
+                    brush.SurroundColors = new[] { Color.FromArgb(0, centerColor) };
+                    graphics.FillPath(brush, path);
+                }
+            }
+        }
+
+        private void DrawAcrylicNoise(Graphics graphics)
+        {
+            var step = Math.Max(2, ScaleLayout(2));
+
+            using (var lightBrush = new SolidBrush(Color.FromArgb(18, 255, 255, 255)))
+            using (var darkBrush = new SolidBrush(Color.FromArgb(10, 0, 0, 0)))
+            {
+                for (var y = 1; y < ClientSize.Height; y += step)
+                {
+                    for (var x = 1; x < ClientSize.Width; x += step)
+                    {
+                        var hash = (x * 17 + y * 31) & 15;
+                        if (hash == 0)
+                            graphics.FillRectangle(lightBrush, x, y, 1, 1);
+                        else if (hash == 7)
+                            graphics.FillRectangle(darkBrush, x, y, 1, 1);
+                    }
+                }
+            }
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
 
-            e.Graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
             DrawAlignedText(e.Graphics, titleText, titleLabel.Font, GetTitleBounds(), StringAlignment.Center, StringAlignment.Center);
@@ -434,9 +497,9 @@ namespace Tomighty.Windows.Timer
 
         private void ApplyTheme()
         {
-            Opacity = 1.0;
+            Opacity = ModernTheme.TimerWindowOpacity;
             ForeColor = ModernTheme.TimerTextColor;
-            BackColor = ModernTheme.TimerWindowBackColor;
+            BackColor = ModernTheme.TimerWindowSurfaceBackColor;
             titleLabel.ForeColor = ModernTheme.TimerTextColor;
             timeLabel.ForeColor = ModernTheme.TimerTextColor;
             closeButton.Invalidate();
@@ -558,14 +621,8 @@ namespace Tomighty.Windows.Timer
                 DrawButtonSurface(e.Graphics, bounds, state);
 
                 var textColor = Enabled ? ModernTheme.ActionButtonTextColor : ModernTheme.SecondaryTextColor;
-                using (var brush = new SolidBrush(textColor))
-                using (var format = new StringFormat(StringFormatFlags.NoWrap))
-                {
-                    format.Alignment = StringAlignment.Center;
-                    format.LineAlignment = StringAlignment.Center;
-                    format.Trimming = StringTrimming.EllipsisCharacter;
-                    e.Graphics.DrawString(Text, Font, brush, bounds, format);
-                }
+                var textFlags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis | TextFormatFlags.PreserveGraphicsClipping;
+                TextRenderer.DrawText(e.Graphics, Text, Font, bounds, textColor, textFlags);
 
                 if (Focused && ShowFocusCues)
                 {
@@ -598,13 +655,15 @@ namespace Tomighty.Windows.Timer
 
                 var radius = Math.Max(1f, ActionButtonCornerRadius * graphics.DpiX / 96f);
                 var pathBounds = new RectangleF(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
+                var borderBounds = RectangleF.Inflate(pathBounds, -0.5f, -0.5f);
 
                 using (var path = CreateRoundedRectangle(pathBounds, radius))
+                using (var borderPath = CreateRoundedRectangle(borderBounds, Math.Max(1f, radius - 0.5f)))
                 using (var brush = new SolidBrush(fill))
                 using (var border = new Pen(ModernTheme.ActionButtonBorderColor))
                 {
                     graphics.FillPath(brush, path);
-                    graphics.DrawPath(border, path);
+                    graphics.DrawPath(border, borderPath);
                 }
             }
 

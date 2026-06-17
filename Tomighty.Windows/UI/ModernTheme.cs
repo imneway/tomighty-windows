@@ -16,12 +16,14 @@ namespace Tomighty.Windows.UI
     internal static class ModernTheme
     {
         private const string TextFontName = "Segoe UI";
+        private const string TextMediumFontName = "OPPO Sans 4.0 EN Medium_opsz40";
         private const string TextSemiBoldFontName = "Segoe UI Semibold";
         private const string TimerDisplayFontName = "OPPO Sans 4.0 EN";
         private const string TimerDisplayMediumFontName = "OPPO Sans 4.0 EN Medium_opsz40";
         private static readonly Color CommandPaletteDarkBaseColor = Color.FromArgb(32, 32, 32);
         private static readonly Color CommandPaletteLightBaseColor = Color.FromArgb(243, 243, 243);
         private static readonly Color TomatoRed = Color.FromArgb(197, 47, 61);
+        private static readonly Lazy<bool> TextMediumFontAvailable = new Lazy<bool>(() => IsFontInstalled(TextMediumFontName));
         private static readonly Lazy<bool> TimerDisplayFontAvailable = new Lazy<bool>(() => IsFontInstalled(TimerDisplayFontName));
         private static readonly Lazy<bool> TimerDisplayMediumFontAvailable = new Lazy<bool>(() => IsFontInstalled(TimerDisplayMediumFontName));
 
@@ -30,7 +32,14 @@ namespace Tomighty.Windows.UI
 
         public static Color WindowBackColor => IsLightTheme ? CommandPaletteLightBaseColor : CommandPaletteDarkBaseColor;
         public static Color TimerWindowBackColor => WindowBackColor;
+        public static Color TimerWindowSurfaceBackColor => IsLightTheme ? Color.FromArgb(218, 236, 248) : Color.FromArgb(42, 44, 52);
         public static Color TimerWindowTintColor => IsLightTheme ? Color.FromArgb(72, 255, 255, 255) : Color.FromArgb(48, 32, 32, 32);
+        public static Color TimerWindowAcrylicStartColor => IsLightTheme ? Color.FromArgb(210, 239, 255) : Color.FromArgb(42, 44, 52);
+        public static Color TimerWindowAcrylicEndColor => IsLightTheme ? Color.FromArgb(204, 210, 242) : Color.FromArgb(28, 30, 36);
+        public static Color TimerWindowAcrylicBlueWashColor => IsLightTheme ? Color.FromArgb(86, 112, 207, 255) : Color.FromArgb(36, 98, 144, 210);
+        public static Color TimerWindowAcrylicVioletWashColor => IsLightTheme ? Color.FromArgb(70, 158, 126, 236) : Color.FromArgb(32, 126, 96, 196);
+        public static Color TimerWindowAcrylicVeilColor => IsLightTheme ? Color.FromArgb(18, 255, 255, 255) : Color.FromArgb(32, 255, 255, 255);
+        public static double TimerWindowOpacity => 1.0;
         public static Color MaterialLayerBackColor => IsLightTheme ? Color.FromArgb(160, 255, 255, 255) : Color.FromArgb(80, 32, 32, 32);
         public static Color MaterialLayerSecondaryBackColor => IsLightTheme ? Color.FromArgb(102, 255, 255, 255) : Color.FromArgb(36, 32, 32, 32);
         public static Color MaterialLayerHoverBackColor => IsLightTheme ? Color.FromArgb(190, 255, 255, 255) : Color.FromArgb(104, 48, 48, 48);
@@ -45,7 +54,7 @@ namespace Tomighty.Windows.UI
         public static Color ActionButtonBackColor => TomatoRed;
         public static Color ActionButtonHoverBackColor => Color.FromArgb(214, 62, 76);
         public static Color ActionButtonPressedBackColor => Color.FromArgb(160, 36, 49);
-        public static Color ActionButtonBorderColor => Color.FromArgb(120, 92, 12, 20);
+        public static Color ActionButtonBorderColor => Color.FromArgb(31, 0, 0, 0);
         public static Color ActionButtonTextColor => Color.White;
         public static Color InputBackColor => IsLightTheme ? SystemColors.Window : Color.FromArgb(32, 32, 32);
         public static Color MenuBackColor => IsLightTheme ? SystemColors.Menu : Color.FromArgb(32, 32, 32);
@@ -61,6 +70,12 @@ namespace Tomighty.Windows.UI
         public static Font SemiBoldTextFont(float size = 9f)
         {
             return new Font(TextSemiBoldFontName, size, FontStyle.Regular, GraphicsUnit.Point);
+        }
+
+        public static Font MediumTextFont(float size = 9f)
+        {
+            var fontName = TextMediumFontAvailable.Value ? TextMediumFontName : TextSemiBoldFontName;
+            return new Font(fontName, size, FontStyle.Regular, GraphicsUnit.Point);
         }
 
         public static Font DisplayFont(float size, FontStyle style = FontStyle.Regular)
@@ -86,9 +101,9 @@ namespace Tomighty.Windows.UI
         public static void ApplyTimerWindow(Form form)
         {
             Windows11Backdrop.ApplyAcrylic(form);
-            ApplyNativeForm(form, BackdropMaterial.Acrylic, () => TimerWindowBackColor);
-            form.BackColor = TimerWindowBackColor;
-            form.Opacity = 1.0;
+            ApplyNativeForm(form, BackdropMaterial.Acrylic, () => TimerWindowSurfaceBackColor);
+            form.BackColor = TimerWindowSurfaceBackColor;
+            form.Opacity = TimerWindowOpacity;
         }
 
         public static void ApplyContextMenu(ContextMenuStrip menu)
