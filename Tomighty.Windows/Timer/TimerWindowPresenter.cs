@@ -15,6 +15,8 @@ namespace Tomighty.Windows.Timer
 {
     internal class TimerWindowPresenter
     {
+        private const int TrayPopupGap = 8;
+
         private readonly ICountdownClock countdownClock;
         private readonly IWindowState idleState;
         private readonly IWindowState pomodoroState;
@@ -28,8 +30,8 @@ namespace Tomighty.Windows.Timer
 
         private IWindowState currentState;
         private TimerWindow window;
-        private Taskbar _taskbar;
         private bool _isPinned;
+        private DateTime lastDeactivateHideTime = DateTime.MinValue;
 
         public TimerWindowPresenter(IPomodoroEngine pomodoroEngine, ICountdownClock countdownClock, IEventHub eventHub)
         {
@@ -60,6 +62,7 @@ namespace Tomighty.Windows.Timer
                 ((Control)control).LostFocus += OnLostFocus;
 
             window.LostFocus += OnLostFocus;
+            window.Deactivate += OnWindowDeactivate;
             window.VisibleChanged += OnWindowVisibleChanged;
             window.PinButton.Click += OnPinButtonClick;
             window.CloseButton.Click += OnCloseButtonClick;
@@ -78,6 +81,9 @@ namespace Tomighty.Windows.Timer
                 window = CreateTimerWindow();
             }
 
+            if (!window.Visible && WasJustHiddenByDeactivation())
+                return;
+
             if (window.Visible)
             {
                 if (!IsPinned)
@@ -88,7 +94,7 @@ namespace Tomighty.Windows.Timer
                 if (!window.IsHandleCreated && window.Handle == IntPtr.Zero)
                     return;
 
-                Point location = GetLocationNearTrayIcon(approximateLocation);
+                Point location = GetLocationAboveTrayIcon(approximateLocation);
                 window.Show(location);
 
                 if (shouldCreateWindow)
@@ -155,11 +161,22 @@ namespace Tomighty.Windows.Timer
             throw new ArgumentException($"Unknown interval type: {intervalType}");
         }
 
-        private Point GetLocationNearTrayIcon(Point approximateLocation)
+        private Point GetLocationAboveTrayIcon(Point approximateLocation)
         {
             var screen = Screen.FromPoint(approximateLocation);
+            var workingArea = screen.WorkingArea;
+            var trayIconSize = Math.Max(16, SystemInformation.SmallIconSize.Height);
+
             var x = approximateLocation.X - window.Width / 2;
-            var y = screen.Bounds.Height - window.Height - Taskbar.Size.Height - 2;
+            var y = approximateLocation.Y - trayIconSize / 2 - TrayPopupGap - window.Height;
+
+            x = Math.Max(workingArea.Left + TrayPopupGap, Math.Min(x, workingArea.Right - window.Width - TrayPopupGap));
+
+            if (y < workingArea.Top + TrayPopupGap)
+                y = approximateLocation.Y + trayIconSize / 2 + TrayPopupGap;
+
+            y = Math.Max(workingArea.Top + TrayPopupGap, Math.Min(y, workingArea.Bottom - window.Height - TrayPopupGap));
+
             return new Point(x, y);
         }
 
@@ -185,8 +202,26 @@ namespace Tomighty.Windows.Timer
             if (!IsPinned && !window.ContainsFocus)
                 window.Hide();
         }
-        
-        private Taskbar Taskbar => _taskbar == null ? _taskbar = new Taskbar() : _taskbar;
+
+        private void OnWindowDeactivate(object sender, System.EventArgs e)
+        {
+            if (!IsPinned)
+            {
+                lastDeactivateHideTime = DateTime.UtcNow;
+                window.Hide();
+            }
+        }
+
+        private bool WasJustHiddenByDeactivation()
+        {
+            var elapsed = DateTime.UtcNow - lastDeactivateHideTime;
+
+            if (elapsed.TotalMilliseconds > 250)
+                return false;
+
+            lastDeactivateHideTime = DateTime.MinValue;
+            return true;
+        }
 
         private bool IsPinned
         {

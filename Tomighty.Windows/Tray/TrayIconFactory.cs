@@ -18,11 +18,19 @@ namespace Tomighty.Windows.Tray
     {
         private const int NotifyIconSize = 32;
         private const int MenuIconSize = 16;
-        private static readonly Color MonochromeIconColor = Color.FromArgb(230, 255, 255, 255);
+        private static readonly Color MonochromeIconColor = Color.White;
 
         public static Icon CreateDefaultIcon()
         {
-            using (var bitmap = CreateDefaultBitmap(NotifyIconSize))
+            if (File.Exists(DefaultIconPath))
+            {
+                using (var bitmap = new Bitmap(DefaultIconPath))
+                {
+                    return CreateIcon(bitmap);
+                }
+            }
+
+            using (var bitmap = CreateFallbackDefaultBitmap(NotifyIconSize))
             {
                 return CreateIcon(bitmap);
             }
@@ -30,7 +38,9 @@ namespace Tomighty.Windows.Tray
 
         public static Bitmap CreateMenuImage()
         {
-            return CreateDefaultBitmap(MenuIconSize);
+            return File.Exists(DefaultIconPath)
+                ? CreateScaledAssetBitmap(MenuIconSize)
+                : CreateFallbackDefaultBitmap(MenuIconSize);
         }
 
         public static Icon CreateRemainingTimeIcon(Duration remainingTime)
@@ -42,10 +52,13 @@ namespace Tomighty.Windows.Tray
             using (var format = new StringFormat(StringFormatFlags.NoWrap))
             {
                 graphics.Clear(Color.Transparent);
-                graphics.SmoothingMode = SmoothingMode.None;
+                graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
-                graphics.DrawRectangle(pen, 4, 5, 24, 22);
+                using (var path = CreateRoundedRectangle(new RectangleF(4.5f, 5.5f, 23f, 21f), 3f))
+                {
+                    graphics.DrawPath(pen, path);
+                }
 
                 var text = FormatRemainingTime(remainingTime);
                 using (var font = CreateCountdownFont(graphics, text))
@@ -60,7 +73,7 @@ namespace Tomighty.Windows.Tray
             }
         }
 
-        private static Bitmap CreateDefaultBitmap(int size)
+        private static Bitmap CreateScaledAssetBitmap(int size)
         {
             var bitmap = new Bitmap(size, size, PixelFormat.Format32bppArgb);
             using (var graphics = Graphics.FromImage(bitmap))
@@ -70,17 +83,24 @@ namespace Tomighty.Windows.Tray
                 graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-                if (File.Exists(DefaultIconPath))
+                using (var source = Image.FromFile(DefaultIconPath))
                 {
-                    using (var source = Image.FromFile(DefaultIconPath))
-                    {
-                        graphics.DrawImage(source, new Rectangle(0, 0, size, size));
-                    }
+                    graphics.DrawImage(source, new Rectangle(0, 0, size, size));
                 }
-                else
-                {
-                    DrawFallbackDefaultIcon(graphics, size);
-                }
+            }
+
+            return bitmap;
+        }
+
+        private static Bitmap CreateFallbackDefaultBitmap(int size)
+        {
+            var bitmap = new Bitmap(size, size, PixelFormat.Format32bppArgb);
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(Color.Transparent);
+                graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                DrawFallbackDefaultIcon(graphics, size);
             }
 
             return bitmap;
@@ -118,7 +138,7 @@ namespace Tomighty.Windows.Tray
             var fontSize = text.Length > 1 ? 14f : 16f;
             while (fontSize >= 9f)
             {
-                var font = new Font("Segoe UI", fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
+                var font = new Font("Segoe UI Semibold", fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
                 var size = graphics.MeasureString(text, font);
                 if (size.Width <= 21f && size.Height <= 18f)
                     return font;
@@ -127,7 +147,21 @@ namespace Tomighty.Windows.Tray
                 fontSize -= 1f;
             }
 
-            return new Font("Segoe UI", 9f, FontStyle.Regular, GraphicsUnit.Pixel);
+            return new Font("Segoe UI Semibold", 9f, FontStyle.Regular, GraphicsUnit.Pixel);
+        }
+
+        private static GraphicsPath CreateRoundedRectangle(RectangleF bounds, float radius)
+        {
+            var diameter = radius * 2f;
+            var path = new GraphicsPath();
+
+            path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+
+            return path;
         }
 
         private static Icon CreateIcon(Bitmap bitmap)

@@ -7,6 +7,8 @@
 
 using System;
 using System.Drawing;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Tomighty.Events;
 using Tomighty.Windows.Timer;
@@ -26,7 +28,7 @@ namespace Tomighty.Windows.Tray
             this.timerWindowPresenter = timerWindowPresenter;
             this.userPreferences = userPreferences;
 
-            notifyIcon.Click += OnNotifyIconClick;
+            notifyIcon.MouseClick += OnNotifyIconMouseClick;
             SetIcon(TrayIconFactory.CreateDefaultIcon());
 
             eventHub.Subscribe<TimerStarted>(OnTimerStarted);
@@ -40,11 +42,56 @@ namespace Tomighty.Windows.Tray
             notifyIcon.Container.Dispose();
         }
 
-        private void OnNotifyIconClick(object sender, EventArgs @event)
+        private void OnNotifyIconMouseClick(object sender, MouseEventArgs @event)
         {
-            if (((MouseEventArgs)@event).Button == MouseButtons.Left)
+            if (@event.Button == MouseButtons.Left)
             {
-                timerWindowPresenter.Toggle(Cursor.Position);
+                timerWindowPresenter.Toggle(GetNotifyIconCenter());
+            }
+        }
+
+        private Point GetNotifyIconCenter()
+        {
+            Rect rect;
+
+            if (!TryGetNotifyIconRect(out rect))
+                return Cursor.Position;
+
+            return new Point(
+                rect.Left + (rect.Right - rect.Left) / 2,
+                rect.Top + (rect.Bottom - rect.Top) / 2);
+        }
+
+        private bool TryGetNotifyIconRect(out Rect rect)
+        {
+            rect = default(Rect);
+
+            try
+            {
+                var type = typeof(NotifyIcon);
+                var idField = type.GetField("id", BindingFlags.Instance | BindingFlags.NonPublic);
+                var windowField = type.GetField("window", BindingFlags.Instance | BindingFlags.NonPublic);
+
+                if (idField == null || windowField == null)
+                    return false;
+
+                var nativeWindow = windowField.GetValue(notifyIcon) as NativeWindow;
+                if (nativeWindow == null || nativeWindow.Handle == IntPtr.Zero)
+                    return false;
+
+                var identifier = new NotifyIconIdentifier
+                {
+                    Size = Marshal.SizeOf(typeof(NotifyIconIdentifier)),
+                    WindowHandle = nativeWindow.Handle,
+                    Id = (uint)(int)idField.GetValue(notifyIcon),
+                    Guid = Guid.Empty
+                };
+
+                return Shell_NotifyIconGetRect(ref identifier, out rect) == 0;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -83,5 +130,26 @@ namespace Tomighty.Windows.Tray
             currentIcon?.Dispose();
             currentIcon = null;
         }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NotifyIconIdentifier
+        {
+            public int Size;
+            public IntPtr WindowHandle;
+            public uint Id;
+            public Guid Guid;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Rect
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [DllImport("shell32.dll", SetLastError = false)]
+        private static extern int Shell_NotifyIconGetRect(ref NotifyIconIdentifier identifier, out Rect iconLocation);
     }
 }
