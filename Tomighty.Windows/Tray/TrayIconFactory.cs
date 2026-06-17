@@ -19,6 +19,7 @@ namespace Tomighty.Windows.Tray
         private const int NotifyIconSize = 32;
         private const float CountdownCornerRadius = 4f;
         private const float CountdownFontSize = 21f;
+        private const float CountdownTextVerticalOffset = -2f;
         private static readonly Color MonochromeIconColor = Color.White;
         private static readonly Color CountdownBackColor = Color.White;
         private static readonly Color CountdownTextColor = Color.FromArgb(230, 0, 0, 0);
@@ -61,10 +62,7 @@ namespace Tomighty.Windows.Tray
                 var text = FormatRemainingTime(remainingTime);
                 using (var font = CreateCountdownFont())
                 {
-                    format.Alignment = StringAlignment.Center;
-                    format.LineAlignment = StringAlignment.Center;
-                    format.Trimming = StringTrimming.None;
-                    graphics.DrawString(text, font, foreground, bounds, format);
+                    DrawCenteredCountdownText(graphics, foreground, font, format, bounds, text);
                 }
 
                 return CreateIcon(bitmap);
@@ -120,11 +118,29 @@ namespace Tomighty.Windows.Tray
         private static StringFormat CreateCountdownFormat()
         {
             var format = (StringFormat)StringFormat.GenericTypographic.Clone();
-            format.Alignment = StringAlignment.Center;
-            format.LineAlignment = StringAlignment.Center;
             format.Trimming = StringTrimming.None;
             format.FormatFlags |= StringFormatFlags.NoWrap;
             return format;
+        }
+
+        private static void DrawCenteredCountdownText(Graphics graphics, Brush foreground, Font font, StringFormat format, RectangleF bounds, string text)
+        {
+            using (var path = new GraphicsPath())
+            {
+                path.AddString(text, font.FontFamily, (int)font.Style, font.Size, PointF.Empty, format);
+
+                var textBounds = path.GetBounds();
+                var x = bounds.Left + (bounds.Width - textBounds.Width) / 2f - textBounds.Left;
+                var y = bounds.Top + (bounds.Height - textBounds.Height) / 2f - textBounds.Top + CountdownTextVerticalOffset;
+
+                using (var transform = new Matrix())
+                {
+                    transform.Translate(x, y);
+                    path.Transform(transform);
+                }
+
+                graphics.FillPath(foreground, path);
+            }
         }
 
         private static GraphicsPath CreateRoundedRectangle(RectangleF bounds, float radius)
