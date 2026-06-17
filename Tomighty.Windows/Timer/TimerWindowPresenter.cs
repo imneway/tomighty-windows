@@ -274,7 +274,7 @@ namespace Tomighty.Windows.Timer
                 window.UpdateTitle("Short Break");
                 window.UpdateColorScheme(TimerWindow.Green);
                 window.UpdateTimeDisplay(remainingTime.ToTimeString());
-                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.ActionButtonBackColor);
+                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.BreakActionButtonBackColor);
             }
         }
 
@@ -295,7 +295,7 @@ namespace Tomighty.Windows.Timer
                 window.UpdateTitle("Long Break");
                 window.UpdateColorScheme(TimerWindow.Blue);
                 window.UpdateTimeDisplay(remainingTime.ToTimeString());
-                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.ActionButtonBackColor);
+                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.BreakActionButtonBackColor);
             }
         }
 
@@ -319,10 +319,10 @@ namespace Tomighty.Windows.Timer
                 window.SetTimerActions(
                     $"Start {pomodoroEngine.SuggestedBreakType.GetName()}",
                     StartTimer,
-                    ModernTheme.ActionButtonBackColor,
+                    ModernTheme.BreakActionButtonBackColor,
                     "Skip Break",
                     StartPomodoro,
-                    ModernTheme.ActionButtonBackColor);
+                    ModernTheme.NeutralActionButtonBackColor);
             }
 
             private void StartTimer()
