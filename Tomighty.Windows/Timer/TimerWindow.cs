@@ -35,8 +35,8 @@ namespace Tomighty.Windows.Timer
         private const int TimeHeight = 48;
         private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
         private const int CompactHeight = CompactPadding + TitleHeight + TimeVerticalMargin + TimeHeight + TimeVerticalMargin + ActionButtonHeight + CompactPadding;
-        private const int ActionButtonCornerRadius = 8;
         private const int WindowCornerRadius = 16;
+        private const int ActionButtonCornerRadius = WindowCornerRadius - CompactPadding;
 
         private Action currentTimerAction;
         private bool pinned;
@@ -58,6 +58,7 @@ namespace Tomighty.Windows.Timer
             AutoScaleMode = AutoScaleMode.None;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
             ModernTheme.ApplyTimerWindow(this);
+            Windows11Backdrop.SuppressBorder(this);
             pinButton.Visible = false;
             pinButton.Enabled = false;
             ModernTheme.StyleIconButton(closeButton);
@@ -135,12 +136,14 @@ namespace Tomighty.Windows.Timer
             layoutScale = GetCurrentDpiScale();
             ApplyCompactFonts();
             ApplyCompactWindowSize();
+            UpdateWindowRegion();
             UpdateCompactBounds();
         }
 
         protected override void OnClientSizeChanged(EventArgs e)
         {
             base.OnClientSizeChanged(e);
+            UpdateWindowRegion();
 
             if (IsHandleCreated)
                 UpdateCompactBounds();
@@ -151,6 +154,8 @@ namespace Tomighty.Windows.Timer
             var compactSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(CompactHeight));
             if (Size != compactSize)
                 Size = compactSize;
+
+            UpdateWindowRegion();
         }
 
         private void ApplyCompactFonts()
@@ -337,6 +342,19 @@ namespace Tomighty.Windows.Timer
         private int ScaleLayout(int value)
         {
             return (int)Math.Round(value * layoutScale);
+        }
+
+        private void UpdateWindowRegion()
+        {
+            if (ClientSize.Width <= 0 || ClientSize.Height <= 0)
+                return;
+
+            using (var path = CreateRoundedRectangle(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), ScaleLayout(WindowCornerRadius)))
+            {
+                var oldRegion = Region;
+                Region = new Region(path);
+                oldRegion?.Dispose();
+            }
         }
 
         private static GraphicsPath CreateRoundedRectangle(RectangleF bounds, float radius)

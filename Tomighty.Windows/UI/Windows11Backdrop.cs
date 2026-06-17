@@ -24,9 +24,11 @@ namespace Tomighty.Windows.UI
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMWA_BORDER_COLOR = 34;
         private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
 
         private const int DWMWCP_ROUND = 2;
+        private const int DWMWA_COLOR_NONE = unchecked((int)0xFFFFFFFE);
         private static readonly System.Version Windows11Build = new System.Version(10, 0, 22000);
         private static readonly Lazy<System.Version> CurrentWindowsVersion = new Lazy<System.Version>(ReadWindowsVersion);
 
@@ -83,6 +85,17 @@ namespace Tomighty.Windows.UI
             Apply(form.Handle, material, material == BackdropMaterial.Acrylic);
         }
 
+        public static void SuppressBorder(Form form)
+        {
+            if (form == null)
+                return;
+
+            form.HandleCreated += (sender, args) => SuppressBorder(form.Handle);
+
+            if (form.IsHandleCreated)
+                SuppressBorder(form.Handle);
+        }
+
         private static void Apply(IntPtr handle, BackdropMaterial material, bool useAcrylicAccent)
         {
             if (handle == IntPtr.Zero)
@@ -109,6 +122,15 @@ namespace Tomighty.Windows.UI
         private static void TrySetAttribute(IntPtr handle, int attribute, int value)
         {
             DwmSetWindowAttribute(handle, attribute, ref value, Marshal.SizeOf(typeof(int)));
+        }
+
+        private static void SuppressBorder(IntPtr handle)
+        {
+            if (handle == IntPtr.Zero)
+                return;
+
+            var borderColor = DWMWA_COLOR_NONE;
+            TrySetAttribute(handle, DWMWA_BORDER_COLOR, borderColor);
         }
 
         private static bool IsSystemDarkTheme()
