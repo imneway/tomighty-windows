@@ -68,12 +68,11 @@ namespace Tomighty.Tools
                 TimerStateShot.Timed("02-short-break", "Short Break", "05:00", "Interrupt", BreakActionButtonBackColor),
                 TimerStateShot.Timed("03-long-break", "Long Break", "15:00", "Interrupt", BreakActionButtonBackColor),
                 TimerStateShot.Message("04-idle", "Idle", "Start Pomodoro", ActionButtonBackColor),
-                TimerStateShot.Message("05-pomodoro-completed-short", "Pomodoro Completed", "Start Short break", BreakActionButtonBackColor, "Skip Break", NeutralActionButtonBackColor),
-                TimerStateShot.Message("06-pomodoro-completed-long", "Pomodoro Completed", "Start Long break", BreakActionButtonBackColor, "Skip Break", NeutralActionButtonBackColor),
-                TimerStateShot.Message("07-break-finished", "Break Finished", "Start Pomodoro", ActionButtonBackColor),
-                TimerStateShot.Message("08-pomodoro-interrupted", "Pomodoro interrupted", "Restart", NeutralActionButtonBackColor),
-                TimerStateShot.Message("09-short-break-interrupted", "Short break interrupted", "Restart", NeutralActionButtonBackColor),
-                TimerStateShot.Message("10-long-break-interrupted", "Long break interrupted", "Restart", NeutralActionButtonBackColor)
+                TimerStateShot.MessageActions("05-pomodoro-finished", "Pomodoro finished", "Take a break", "Short", BreakActionButtonBackColor, "Long", BreakActionButtonBackColor),
+                TimerStateShot.Message("06-break-finished", "Break Finished", "Start Pomodoro", ActionButtonBackColor),
+                TimerStateShot.Message("07-pomodoro-interrupted", "Pomodoro interrupted", "Restart", NeutralActionButtonBackColor),
+                TimerStateShot.Message("08-short-break-interrupted", "Short break interrupted", "Restart", NeutralActionButtonBackColor),
+                TimerStateShot.Message("09-long-break-interrupted", "Long break interrupted", "Restart", NeutralActionButtonBackColor)
             };
 
             var images = new Bitmap[shots.Length];
@@ -166,13 +165,14 @@ namespace Tomighty.Tools
                     outputDirectory,
                     images,
                     window,
-                    "08-pomodoro-completed",
-                    "Pomodoro Completed",
+                    "08-pomodoro-finished",
+                    "Pomodoro finished",
                     false,
-                    "Start Short break",
+                    "Short",
                     BreakActionButtonBackColor,
-                    "Skip Break",
-                    NeutralActionButtonBackColor);
+                    "Long",
+                    BreakActionButtonBackColor,
+                    "Take a break");
 
                 eventHub.Publish(new TimerStopped(IntervalType.ShortBreak, preferences.GetIntervalDuration(IntervalType.ShortBreak), Duration.Zero));
                 PumpUi();
@@ -239,9 +239,10 @@ namespace Tomighty.Tools
             string primaryActionText,
             Color primaryActionColor,
             string secondaryActionText = "",
-            Color? secondaryActionColor = null)
+            Color? secondaryActionColor = null,
+            string messageText = "")
         {
-            AssertTimerWindowState(window, title, showTime, primaryActionText, primaryActionColor, secondaryActionText, secondaryActionColor);
+            AssertTimerWindowState(window, title, showTime, primaryActionText, primaryActionColor, secondaryActionText, secondaryActionColor, messageText);
 
             var path = Path.Combine(outputDirectory, fileName + ".png");
             CaptureWindow(window.Handle, path);
@@ -255,16 +256,36 @@ namespace Tomighty.Tools
             string primaryActionText,
             Color primaryActionColor,
             string secondaryActionText,
-            Color? secondaryActionColor)
+            Color? secondaryActionColor,
+            string messageText)
         {
             AssertEqual("title", title, GetPrivateField<string>(window, "titleText"));
             AssertEqual("timeDisplayVisible", showTime, GetPrivateField<bool>(window, "timeDisplayVisible"));
+            AssertEqual("messageText", messageText, GetPrivateField<string>(window, "messageText"));
             AssertEqual("primaryActionText", primaryActionText, GetPrivateField<string>(window, "primaryActionText"));
             AssertEqual("primaryActionButtonColor", primaryActionColor.ToArgb(), GetPrivateField<Color>(window, "primaryActionButtonColor").ToArgb());
             AssertEqual("secondaryActionText", secondaryActionText, GetPrivateField<string>(window, "secondaryActionText"));
 
             if (!string.IsNullOrEmpty(secondaryActionText))
+            {
                 AssertEqual("secondaryActionButtonColor", secondaryActionColor.GetValueOrDefault().ToArgb(), GetPrivateField<Color>(window, "secondaryActionButtonColor").ToArgb());
+                AssertHorizontalActionButtons(window);
+            }
+        }
+
+        private static void AssertHorizontalActionButtons(TimerWindow window)
+        {
+            var primaryBounds = (Rectangle)typeof(TimerWindow)
+                .GetMethod("GetPrimaryActionButtonBounds", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[0]);
+            var secondaryBounds = (Rectangle)typeof(TimerWindow)
+                .GetMethod("GetSecondaryActionButtonBounds", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[0]);
+            var layoutScale = GetPrivateField<float>(window, "layoutScale");
+            var expectedGap = (int)Math.Round(4f * layoutScale);
+
+            AssertEqual("secondaryActionY", primaryBounds.Top, secondaryBounds.Top);
+            AssertEqual("actionButtonGap", expectedGap, secondaryBounds.Left - primaryBounds.Right);
         }
 
         private static T GetPrivateField<T>(object instance, string name)
@@ -297,7 +318,9 @@ namespace Tomighty.Tools
                 form.HideTimeDisplay();
 
             form.UpdateColorScheme(shot.AccentColor);
-            if (shot.HasSecondaryAction)
+            if (shot.HasMessage && shot.HasSecondaryAction)
+                form.SetTimerMessageActions(shot.MessageText, shot.PrimaryActionText, () => { }, shot.PrimaryActionColor, shot.SecondaryActionText, () => { }, shot.SecondaryActionColor);
+            else if (shot.HasSecondaryAction)
                 form.SetTimerActions(shot.PrimaryActionText, () => { }, shot.PrimaryActionColor, shot.SecondaryActionText, () => { }, shot.SecondaryActionColor);
             else
                 form.SetTimerAction(shot.PrimaryActionText, () => { }, shot.PrimaryActionColor);
@@ -362,6 +385,7 @@ namespace Tomighty.Tools
             public readonly string FileName;
             public readonly string Title;
             public readonly string Time;
+            public readonly string MessageText;
             public readonly bool ShowTime;
             public readonly Color AccentColor;
             public readonly string PrimaryActionText;
@@ -369,11 +393,12 @@ namespace Tomighty.Tools
             public readonly string SecondaryActionText;
             public readonly Color SecondaryActionColor;
 
-            private TimerStateShot(string fileName, string title, string time, bool showTime, Color accentColor, string primaryActionText, Color primaryActionColor, string secondaryActionText, Color secondaryActionColor)
+            private TimerStateShot(string fileName, string title, string time, string messageText, bool showTime, Color accentColor, string primaryActionText, Color primaryActionColor, string secondaryActionText, Color secondaryActionColor)
             {
                 FileName = fileName;
                 Title = title;
                 Time = time;
+                MessageText = messageText;
                 ShowTime = showTime;
                 AccentColor = accentColor;
                 PrimaryActionText = primaryActionText;
@@ -383,10 +408,11 @@ namespace Tomighty.Tools
             }
 
             public bool HasSecondaryAction => !string.IsNullOrEmpty(SecondaryActionText);
+            public bool HasMessage => !string.IsNullOrEmpty(MessageText);
 
             public static TimerStateShot Timed(string fileName, string title, string time, string actionText, Color actionColor)
             {
-                return new TimerStateShot(fileName, title, time, true, actionColor, actionText, actionColor, "", NeutralActionButtonBackColor);
+                return new TimerStateShot(fileName, title, time, "", true, actionColor, actionText, actionColor, "", NeutralActionButtonBackColor);
             }
 
             public static TimerStateShot Message(string fileName, string title, string primaryActionText, Color primaryActionColor)
@@ -396,7 +422,12 @@ namespace Tomighty.Tools
 
             public static TimerStateShot Message(string fileName, string title, string primaryActionText, Color primaryActionColor, string secondaryActionText, Color secondaryActionColor)
             {
-                return new TimerStateShot(fileName, title, "", false, primaryActionColor, primaryActionText, primaryActionColor, secondaryActionText, secondaryActionColor);
+                return new TimerStateShot(fileName, title, "", "", false, primaryActionColor, primaryActionText, primaryActionColor, secondaryActionText, secondaryActionColor);
+            }
+
+            public static TimerStateShot MessageActions(string fileName, string title, string messageText, string primaryActionText, Color primaryActionColor, string secondaryActionText, Color secondaryActionColor)
+            {
+                return new TimerStateShot(fileName, title, "", messageText, false, primaryActionColor, primaryActionText, primaryActionColor, secondaryActionText, secondaryActionColor);
             }
         }
 

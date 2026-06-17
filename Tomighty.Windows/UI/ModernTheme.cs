@@ -31,7 +31,7 @@ namespace Tomighty.Windows.UI
         public static bool IsDarkTheme => !IsLightTheme;
 
         public static Color WindowBackColor => IsLightTheme ? CommandPaletteLightBaseColor : CommandPaletteDarkBaseColor;
-        public static Color TimerWindowBackColor => WindowBackColor;
+        public static Color TimerWindowBackColor => CommandPaletteLightBaseColor;
         public static Color MaterialLayerBackColor => IsLightTheme ? Color.FromArgb(160, 255, 255, 255) : Color.FromArgb(80, 32, 32, 32);
         public static Color MaterialLayerSecondaryBackColor => IsLightTheme ? Color.FromArgb(102, 255, 255, 255) : Color.FromArgb(36, 32, 32, 32);
         public static Color MaterialLayerHoverBackColor => IsLightTheme ? Color.FromArgb(190, 255, 255, 255) : Color.FromArgb(104, 48, 48, 48);
@@ -94,8 +94,8 @@ namespace Tomighty.Windows.UI
 
         public static void ApplyTimerWindow(Form form)
         {
-            Windows11Backdrop.ApplyAcrylic(form);
-            ApplyNativeForm(form, BackdropMaterial.Acrylic, () => TimerWindowBackColor);
+            Windows11Backdrop.ApplyLightAcrylic(form);
+            ApplyNativeForm(form, BackdropMaterial.Acrylic, () => TimerWindowBackColor, () => Windows11Backdrop.RefreshLightAcrylic(form));
             form.BackColor = TimerWindowBackColor;
             form.Opacity = 1.0;
         }
@@ -165,6 +165,11 @@ namespace Tomighty.Windows.UI
 
         private static void ApplyNativeForm(Form form, BackdropMaterial material, Func<Color> backColorProvider)
         {
+            ApplyNativeForm(form, material, backColorProvider, () => Windows11Backdrop.Refresh(form, material));
+        }
+
+        private static void ApplyNativeForm(Form form, BackdropMaterial material, Func<Color> backColorProvider, Action refreshBackdrop)
+        {
             form.BackColor = backColorProvider();
             form.ForeColor = TextColor;
             form.Font = SystemFonts.MessageBoxFont;
@@ -176,7 +181,7 @@ namespace Tomighty.Windows.UI
                 form.BackColor = backColorProvider();
                 form.ForeColor = TextColor;
                 ApplyControls(form.Controls);
-                Windows11Backdrop.Refresh(form, material);
+                refreshBackdrop();
                 form.Invalidate(true);
             });
         }

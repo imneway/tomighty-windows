@@ -49,6 +49,11 @@ namespace Tomighty.Windows.UI
             Apply(form, BackdropMaterial.Acrylic, true);
         }
 
+        public static void ApplyLightAcrylic(Form form)
+        {
+            Apply(form, BackdropMaterial.Acrylic, true, false);
+        }
+
         public static void ApplyAcrylic(ToolStripDropDown dropDown)
         {
             if (dropDown == null)
@@ -68,13 +73,18 @@ namespace Tomighty.Windows.UI
 
         private static void Apply(Form form, BackdropMaterial material, bool useAcrylicAccent)
         {
+            Apply(form, material, useAcrylicAccent, null);
+        }
+
+        private static void Apply(Form form, BackdropMaterial material, bool useAcrylicAccent, bool? darkModeOverride)
+        {
             if (form == null)
                 return;
 
-            form.HandleCreated += (sender, args) => Apply(form.Handle, material, useAcrylicAccent);
+            form.HandleCreated += (sender, args) => Apply(form.Handle, material, useAcrylicAccent, darkModeOverride);
 
             if (form.IsHandleCreated)
-                Apply(form.Handle, material, useAcrylicAccent);
+                Apply(form.Handle, material, useAcrylicAccent, darkModeOverride);
         }
 
         public static void Refresh(Form form, BackdropMaterial material)
@@ -83,6 +93,14 @@ namespace Tomighty.Windows.UI
                 return;
 
             Apply(form.Handle, material, material == BackdropMaterial.Acrylic);
+        }
+
+        public static void RefreshLightAcrylic(Form form)
+        {
+            if (form == null || !form.IsHandleCreated)
+                return;
+
+            Apply(form.Handle, BackdropMaterial.Acrylic, true, false);
         }
 
         public static void SuppressBorder(Form form)
@@ -98,10 +116,15 @@ namespace Tomighty.Windows.UI
 
         private static void Apply(IntPtr handle, BackdropMaterial material, bool useAcrylicAccent)
         {
+            Apply(handle, material, useAcrylicAccent, null);
+        }
+
+        private static void Apply(IntPtr handle, BackdropMaterial material, bool useAcrylicAccent, bool? darkModeOverride)
+        {
             if (handle == IntPtr.Zero)
                 return;
 
-            var isDarkMode = IsSystemDarkTheme();
+            var isDarkMode = darkModeOverride.GetValueOrDefault(IsSystemDarkTheme());
             var darkMode = isDarkMode ? 1 : 0;
             TrySetAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE, darkMode);
             TrySetAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, darkMode);

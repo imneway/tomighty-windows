@@ -38,7 +38,6 @@ namespace Tomighty.Windows.Timer
         private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
         private const int CompactHeight = CompactPadding + TitleHeight + TimeVerticalMargin + TimeHeight + TimeVerticalMargin + ActionButtonHeight + CompactPadding;
         private const int CompactMessageHeight = CompactPadding + MessageTitleHeight + ActionButtonHeight + CompactPadding;
-        private const int CompactDualActionHeight = CompactPadding + MessageTitleHeight + ActionButtonHeight * 2 + ActionButtonGap + CompactPadding;
         private const int WindowCornerRadius = 20;
         private const int ActionButtonCornerRadius = 8;
 
@@ -53,6 +52,7 @@ namespace Tomighty.Windows.Timer
         private bool timeDisplayVisible = true;
         private string titleText = "Title";
         private string timeText = "--:--";
+        private string messageText = "";
         private string primaryActionText = "Timer Action";
         private string secondaryActionText = "";
         private Color primaryActionButtonColor = ModernTheme.ActionButtonBackColor;
@@ -123,17 +123,25 @@ namespace Tomighty.Windows.Timer
         public void SetTimerAction(string text, Action action, Color color)
         {
             if (IsHandleCreated)
-                BeginInvoke(new Action(() => ApplyTimerActions(text, action, color, "", null, ModernTheme.NeutralActionButtonBackColor)));
+                BeginInvoke(new Action(() => ApplyTimerActions(text, action, color, "", null, ModernTheme.NeutralActionButtonBackColor, "")));
             else
-                ApplyTimerActions(text, action, color, "", null, ModernTheme.NeutralActionButtonBackColor);
+                ApplyTimerActions(text, action, color, "", null, ModernTheme.NeutralActionButtonBackColor, "");
         }
 
         public void SetTimerActions(string primaryText, Action primaryAction, Color primaryColor, string secondaryText, Action secondaryAction, Color secondaryColor)
         {
             if (IsHandleCreated)
-                BeginInvoke(new Action(() => ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor)));
+                BeginInvoke(new Action(() => ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor, "")));
             else
-                ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor);
+                ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor, "");
+        }
+
+        public void SetTimerMessageActions(string message, string primaryText, Action primaryAction, Color primaryColor, string secondaryText, Action secondaryAction, Color secondaryColor)
+        {
+            if (IsHandleCreated)
+                BeginInvoke(new Action(() => ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor, message)));
+            else
+                ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor, message);
         }
 
         public void UpdateTimeDisplay(string text)
@@ -157,8 +165,9 @@ namespace Tomighty.Windows.Timer
             Invalidate();
         }
 
-        private void ApplyTimerActions(string primaryText, Action primaryAction, Color primaryColor, string secondaryText, Action secondaryAction, Color secondaryColor)
+        private void ApplyTimerActions(string primaryText, Action primaryAction, Color primaryColor, string secondaryText, Action secondaryAction, Color secondaryColor, string message)
         {
+            messageText = message ?? "";
             primaryActionText = primaryText;
             primaryTimerAction = primaryAction;
             primaryActionButtonColor = primaryColor;
@@ -388,6 +397,15 @@ namespace Tomighty.Windows.Timer
                 DrawAlignedText(e.Graphics, titleText, titleLabel.Font, GetTitleBounds(), StringAlignment.Center, StringAlignment.Center);
                 DrawAlignedText(e.Graphics, timeText, timeLabel.Font, GetTimeBounds(), StringAlignment.Center, StringAlignment.Center);
             }
+            else if (HasMessage)
+            {
+                DrawAlignedText(e.Graphics, titleText, titleLabel.Font, GetTitleBounds(), StringAlignment.Center, StringAlignment.Center);
+
+                using (var messageFont = ModernTheme.TextFont(18f))
+                {
+                    DrawAlignedText(e.Graphics, messageText, messageFont, GetMessageBounds(), StringAlignment.Center, StringAlignment.Center, true);
+                }
+            }
             else
             {
                 using (var messageFont = ModernTheme.TextFont(13f))
@@ -436,6 +454,14 @@ namespace Tomighty.Windows.Timer
             return new Rectangle(padding, padding, ClientSize.Width - padding * 2, Math.Max(ScaleLayout(TitleHeight), actionTop - padding * 2));
         }
 
+        private Rectangle GetMessageBounds()
+        {
+            var padding = ScaleLayout(CompactPadding);
+            var titleBottom = padding + ScaleLayout(TitleHeight);
+            var actionTop = GetFirstActionButtonTop();
+            return new Rectangle(padding, titleBottom, ClientSize.Width - padding * 2, Math.Max(ScaleLayout(TitleHeight), actionTop - titleBottom - padding));
+        }
+
         private Rectangle GetTimeBounds()
         {
             var padding = ScaleLayout(CompactPadding);
@@ -445,18 +471,21 @@ namespace Tomighty.Windows.Timer
         private Rectangle GetPrimaryActionButtonBounds()
         {
             var padding = ScaleLayout(CompactPadding);
-            var width = Math.Min(ScaleLayout(ActionButtonWidth), ClientSize.Width - padding * 2);
+            var fullWidth = Math.Min(ScaleLayout(ActionButtonWidth), ClientSize.Width - padding * 2);
+            var width = HasSecondaryAction ? (fullWidth - ScaleLayout(ActionButtonGap)) / 2 : fullWidth;
             var height = ScaleLayout(ActionButtonHeight);
-            return new Rectangle((ClientSize.Width - width) / 2, GetFirstActionButtonTop(), width, height);
+            var groupLeft = (ClientSize.Width - fullWidth) / 2;
+            return new Rectangle(groupLeft, GetFirstActionButtonTop(), width, height);
         }
 
         private Rectangle GetSecondaryActionButtonBounds()
         {
             var padding = ScaleLayout(CompactPadding);
-            var width = Math.Min(ScaleLayout(ActionButtonWidth), ClientSize.Width - padding * 2);
+            var fullWidth = Math.Min(ScaleLayout(ActionButtonWidth), ClientSize.Width - padding * 2);
+            var width = (fullWidth - ScaleLayout(ActionButtonGap)) / 2;
             var height = ScaleLayout(ActionButtonHeight);
-            var y = ClientSize.Height - padding - height;
-            return new Rectangle((ClientSize.Width - width) / 2, y, width, height);
+            var primaryBounds = GetPrimaryActionButtonBounds();
+            return new Rectangle(primaryBounds.Right + ScaleLayout(ActionButtonGap), primaryBounds.Top, width, height);
         }
 
         private int GetFirstActionButtonTop()
@@ -464,18 +493,15 @@ namespace Tomighty.Windows.Timer
             var padding = ScaleLayout(CompactPadding);
             var height = ScaleLayout(ActionButtonHeight);
 
-            if (!HasSecondaryAction)
-                return ClientSize.Height - padding - height;
-
-            return ClientSize.Height - padding - height * 2 - ScaleLayout(ActionButtonGap);
+            return ClientSize.Height - padding - height;
         }
 
         private int GetCompactHeight()
         {
             if (timeDisplayVisible)
-                return HasSecondaryAction ? CompactHeight + ActionButtonHeight + ActionButtonGap : CompactHeight;
+                return CompactHeight;
 
-            return HasSecondaryAction ? CompactDualActionHeight : CompactMessageHeight;
+            return CompactMessageHeight;
         }
 
         private int ScaleLayout(int value)
@@ -484,6 +510,7 @@ namespace Tomighty.Windows.Timer
         }
 
         private bool HasSecondaryAction => !string.IsNullOrWhiteSpace(secondaryActionText) && secondaryTimerAction != null;
+        private bool HasMessage => !string.IsNullOrWhiteSpace(messageText);
 
         private void UpdateWindowRegion()
         {

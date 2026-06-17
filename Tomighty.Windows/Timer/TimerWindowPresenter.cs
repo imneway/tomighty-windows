@@ -313,26 +313,27 @@ namespace Tomighty.Windows.Timer
                 if (window == null)
                     return;
 
-                window.UpdateTitle("Pomodoro Completed");
+                window.UpdateTitle("Pomodoro finished");
                 window.UpdateColorScheme(TimerWindow.DarkGray);
                 window.HideTimeDisplay();
-                window.SetTimerActions(
-                    $"Start {pomodoroEngine.SuggestedBreakType.GetName()}",
-                    StartTimer,
+                window.SetTimerMessageActions(
+                    "Take a break",
+                    "Short",
+                    StartShortBreak,
                     ModernTheme.BreakActionButtonBackColor,
-                    "Skip Break",
-                    StartPomodoro,
-                    ModernTheme.NeutralActionButtonBackColor);
+                    "Long",
+                    StartLongBreak,
+                    ModernTheme.BreakActionButtonBackColor);
             }
 
-            private void StartTimer()
+            private void StartShortBreak()
             {
-                pomodoroEngine.StartTimer(pomodoroEngine.SuggestedBreakType);
+                pomodoroEngine.StartTimer(IntervalType.ShortBreak);
             }
 
-            private void StartPomodoro()
+            private void StartLongBreak()
             {
-                pomodoroEngine.StartTimer(IntervalType.Pomodoro);
+                pomodoroEngine.StartTimer(IntervalType.LongBreak);
             }
         }
 
