@@ -231,9 +231,16 @@ namespace Tomighty.Windows.Timer
 
         private void ApplyCompactWindowSize()
         {
+            var bottom = Bottom;
+            var wasVisible = Visible;
             var compactSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(GetCompactHeight()));
             if (Size != compactSize)
+            {
                 Size = compactSize;
+
+                if (wasVisible)
+                    Top = bottom - Height;
+            }
 
             UpdateWindowRegion();
         }
@@ -262,6 +269,10 @@ namespace Tomighty.Windows.Timer
         {
             Location = location;
             Show();
+            Activate();
+
+            if (IsHandleCreated)
+                SetForegroundWindow(Handle);
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
@@ -1052,5 +1063,8 @@ namespace Tomighty.Windows.Timer
 
         [DllImport("user32.dll")]
         private static extern uint GetDpiForWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
     }
 }

@@ -28,11 +28,11 @@ namespace Tomighty.Windows.Tray
 
         public TrayMenu()
         {
-            remainingTimeItem = new ToolStripMenuItem("00:00", TrayIconFactory.CreateMenuImage());
+            remainingTimeItem = new ToolStripMenuItem("00:00");
             remainingTimeItem.Enabled = false;
             remainingTimeItem.Font = new Font(remainingTimeItem.Font, FontStyle.Bold);
 
-            stopTimerItem = new ToolStripMenuItem("Stop", TrayIconFactory.CreateMenuImage());
+            stopTimerItem = new ToolStripMenuItem("Stop");
 
             pomodoroCountItem = new ToolStripMenuItem();
             pomodoroCountItem.Enabled = false;
@@ -40,9 +40,9 @@ namespace Tomighty.Windows.Tray
             resetPomodoroCountItem = new ToolStripMenuItem("Reset count");
             resetPomodoroCountItem.Enabled = false;
 
-            startPomodoroItem = new ToolStripMenuItem("Pomodoro", TrayIconFactory.CreateMenuImage());
-            startShortBreakItem = new ToolStripMenuItem("Short break", TrayIconFactory.CreateMenuImage());
-            startLongBreakItem = new ToolStripMenuItem("Long break", TrayIconFactory.CreateMenuImage());
+            startPomodoroItem = new ToolStripMenuItem("Pomodoro");
+            startShortBreakItem = new ToolStripMenuItem("Short break");
+            startLongBreakItem = new ToolStripMenuItem("Long break");
 
             aboutItem = new ToolStripMenuItem("About Tomighty");
             preferencesItem = new ToolStripMenuItem("Preferences...");
@@ -51,20 +51,29 @@ namespace Tomighty.Windows.Tray
             contextMenu = new ContextMenuStrip();
             contextMenu.Items.Add(remainingTimeItem);
             contextMenu.Items.Add(stopTimerItem);
-            contextMenu.Items.Add(new ToolStripSeparator());
+            contextMenu.Items.Add(CreateSeparator());
             contextMenu.Items.Add(pomodoroCountItem);
             contextMenu.Items.Add(resetPomodoroCountItem);
-            contextMenu.Items.Add(new ToolStripSeparator());
+            contextMenu.Items.Add(CreateSeparator());
             contextMenu.Items.Add(startPomodoroItem);
             contextMenu.Items.Add(startShortBreakItem);
             contextMenu.Items.Add(startLongBreakItem);
-            contextMenu.Items.Add(new ToolStripSeparator());
+            contextMenu.Items.Add(CreateSeparator());
             contextMenu.Items.Add(aboutItem);
             contextMenu.Items.Add(preferencesItem);
-            contextMenu.Items.Add(new ToolStripSeparator());
+            contextMenu.Items.Add(CreateSeparator());
             contextMenu.Items.Add(exitItem);
 
             ModernTheme.ApplyContextMenu(contextMenu);
+        }
+
+        private static ToolStripSeparator CreateSeparator()
+        {
+            return new ToolStripSeparator
+            {
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
         }
 
         public ContextMenuStrip Component => contextMenu;

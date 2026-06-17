@@ -264,7 +264,9 @@ namespace Tomighty.Windows.UI
             menu.ForeColor = MenuTextColor;
             menu.Font = SystemFonts.MessageBoxFont;
             menu.Renderer = IsLightTheme ? (ToolStripRenderer)new ToolStripSystemRenderer() : new NativeToolStripRenderer();
-            menu.ShowImageMargin = true;
+            menu.ShowImageMargin = false;
+            menu.ShowCheckMargin = false;
+            menu.Padding = Padding.Empty;
 
             foreach (ToolStripItem item in menu.Items)
             {
@@ -355,10 +357,15 @@ namespace Tomighty.Windows.UI
 
             protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
             {
-                var y = e.Item.Height / 2;
-                using (var pen = new Pen(BorderColor))
+                using (var brush = new SolidBrush(MenuBackColor))
                 {
-                    e.Graphics.DrawLine(pen, 8, y, e.Item.Width - 8, y);
+                    e.Graphics.FillRectangle(brush, new Rectangle(Point.Empty, e.Item.Size));
+                }
+
+                var y = e.Item.Height / 2f - 0.5f;
+                using (var pen = new Pen(BorderColor, 1f))
+                {
+                    e.Graphics.DrawLine(pen, 0, y, e.Item.Width, y);
                 }
             }
         }

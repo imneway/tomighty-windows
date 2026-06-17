@@ -17,7 +17,6 @@ namespace Tomighty.Windows.Tray
     internal static class TrayIconFactory
     {
         private const int NotifyIconSize = 32;
-        private const int MenuIconSize = 16;
         private static readonly Color MonochromeIconColor = Color.White;
 
         public static Icon CreateDefaultIcon()
@@ -36,60 +35,28 @@ namespace Tomighty.Windows.Tray
             }
         }
 
-        public static Bitmap CreateMenuImage()
-        {
-            return File.Exists(DefaultIconPath)
-                ? CreateScaledAssetBitmap(MenuIconSize)
-                : CreateFallbackDefaultBitmap(MenuIconSize);
-        }
-
         public static Icon CreateRemainingTimeIcon(Duration remainingTime)
         {
             using (var bitmap = new Bitmap(NotifyIconSize, NotifyIconSize, PixelFormat.Format32bppArgb))
             using (var graphics = Graphics.FromImage(bitmap))
-            using (var pen = new Pen(MonochromeIconColor, 2f))
             using (var brush = new SolidBrush(MonochromeIconColor))
-            using (var format = new StringFormat(StringFormatFlags.NoWrap))
+            using (var format = CreateCountdownFormat())
             {
                 graphics.Clear(Color.Transparent);
                 graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
-                using (var path = CreateRoundedRectangle(new RectangleF(4.5f, 5.5f, 23f, 21f), 3f))
-                {
-                    graphics.DrawPath(pen, path);
-                }
-
                 var text = FormatRemainingTime(remainingTime);
-                using (var font = CreateCountdownFont(graphics, text))
+                using (var font = CreateCountdownFont(text))
                 {
                     format.Alignment = StringAlignment.Center;
                     format.LineAlignment = StringAlignment.Center;
                     format.Trimming = StringTrimming.None;
-                    graphics.DrawString(text, font, brush, new RectangleF(4, 4, 24, 24), format);
+                    graphics.DrawString(text, font, brush, new RectangleF(0, 0, NotifyIconSize, NotifyIconSize), format);
                 }
 
                 return CreateIcon(bitmap);
             }
-        }
-
-        private static Bitmap CreateScaledAssetBitmap(int size)
-        {
-            var bitmap = new Bitmap(size, size, PixelFormat.Format32bppArgb);
-            using (var graphics = Graphics.FromImage(bitmap))
-            {
-                graphics.Clear(Color.Transparent);
-                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-
-                using (var source = Image.FromFile(DefaultIconPath))
-                {
-                    graphics.DrawImage(source, new Rectangle(0, 0, size, size));
-                }
-            }
-
-            return bitmap;
         }
 
         private static Bitmap CreateFallbackDefaultBitmap(int size)
@@ -133,35 +100,20 @@ namespace Tomighty.Windows.Tray
             return Math.Min(99, minutes).ToString();
         }
 
-        private static Font CreateCountdownFont(Graphics graphics, string text)
+        private static Font CreateCountdownFont(string text)
         {
-            var fontSize = text.Length > 1 ? 14f : 16f;
-            while (fontSize >= 9f)
-            {
-                var font = new Font("Segoe UI Semibold", fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
-                var size = graphics.MeasureString(text, font);
-                if (size.Width <= 21f && size.Height <= 18f)
-                    return font;
-
-                font.Dispose();
-                fontSize -= 1f;
-            }
-
-            return new Font("Segoe UI Semibold", 9f, FontStyle.Regular, GraphicsUnit.Pixel);
+            var fontSize = text.Length > 1 ? 32f : 44f;
+            return new Font("Segoe UI Semibold", fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
         }
 
-        private static GraphicsPath CreateRoundedRectangle(RectangleF bounds, float radius)
+        private static StringFormat CreateCountdownFormat()
         {
-            var diameter = radius * 2f;
-            var path = new GraphicsPath();
-
-            path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
-            path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
-            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
-            path.CloseFigure();
-
-            return path;
+            var format = (StringFormat)StringFormat.GenericTypographic.Clone();
+            format.Alignment = StringAlignment.Center;
+            format.LineAlignment = StringAlignment.Center;
+            format.Trimming = StringTrimming.None;
+            format.FormatFlags |= StringFormatFlags.NoWrap;
+            return format;
         }
 
         private static Icon CreateIcon(Bitmap bitmap)
