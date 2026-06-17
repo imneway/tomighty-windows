@@ -16,7 +16,6 @@ namespace Tomighty.Tools
     internal static class TimerSmokeHost
     {
         private static readonly Color ActionButtonBackColor = Color.FromArgb(197, 47, 61);
-        private static readonly Color BreakActionButtonBackColor = Color.FromArgb(0, 155, 59);
         private static readonly Color NeutralActionButtonBackColor = Color.FromArgb(133, 137, 145);
 
         [STAThread]
@@ -65,12 +64,12 @@ namespace Tomighty.Tools
             var shots = new[]
             {
                 TimerStateShot.Timed("01-pomodoro", "Pomodoro", "25:00", "Interrupt", ActionButtonBackColor),
-                TimerStateShot.Timed("02-short-break", "Short Break", "05:00", "Interrupt", BreakActionButtonBackColor),
-                TimerStateShot.Timed("03-long-break", "Long Break", "15:00", "Interrupt", BreakActionButtonBackColor),
-                TimerStateShot.Message("04-idle", "Idle", "Start Pomodoro", NeutralActionButtonBackColor),
-                TimerStateShot.Message("05-pomodoro-completed-short", "Pomodoro Completed", "Start Short break", BreakActionButtonBackColor, "Skip Break", NeutralActionButtonBackColor),
-                TimerStateShot.Message("06-pomodoro-completed-long", "Pomodoro Completed", "Start Long break", BreakActionButtonBackColor, "Skip Break", NeutralActionButtonBackColor),
-                TimerStateShot.Message("07-break-finished", "Break Finished", "Start Pomodoro", NeutralActionButtonBackColor),
+                TimerStateShot.Timed("02-short-break", "Short Break", "05:00", "Interrupt", ActionButtonBackColor),
+                TimerStateShot.Timed("03-long-break", "Long Break", "15:00", "Interrupt", ActionButtonBackColor),
+                TimerStateShot.Message("04-idle", "Idle", "Start Pomodoro", ActionButtonBackColor),
+                TimerStateShot.Message("05-pomodoro-completed-short", "Pomodoro Completed", "Start Short break", ActionButtonBackColor, "Skip Break", ActionButtonBackColor),
+                TimerStateShot.Message("06-pomodoro-completed-long", "Pomodoro Completed", "Start Long break", ActionButtonBackColor, "Skip Break", ActionButtonBackColor),
+                TimerStateShot.Message("07-break-finished", "Break Finished", "Start Pomodoro", ActionButtonBackColor),
                 TimerStateShot.Message("08-pomodoro-interrupted", "Pomodoro interrupted", "Restart", NeutralActionButtonBackColor),
                 TimerStateShot.Message("09-short-break-interrupted", "Short break interrupted", "Restart", NeutralActionButtonBackColor),
                 TimerStateShot.Message("10-long-break-interrupted", "Long break interrupted", "Restart", NeutralActionButtonBackColor)
@@ -134,7 +133,7 @@ namespace Tomighty.Tools
                 window.BringToFront();
                 PumpUi();
 
-                CaptureAndAssertDrivenState(outputDirectory, images, window, "01-idle", "Idle", false, "Start Pomodoro", NeutralActionButtonBackColor);
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "01-idle", "Idle", false, "Start Pomodoro", ActionButtonBackColor);
 
                 engine.StartTimer(IntervalType.Pomodoro);
                 PumpUi();
@@ -146,7 +145,7 @@ namespace Tomighty.Tools
 
                 engine.StartTimer(IntervalType.ShortBreak);
                 PumpUi();
-                CaptureAndAssertDrivenState(outputDirectory, images, window, "04-short-break-running", "Short Break", true, "Interrupt", BreakActionButtonBackColor);
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "04-short-break-running", "Short Break", true, "Interrupt", ActionButtonBackColor);
 
                 ClickPrimaryAction(window);
                 PumpUi();
@@ -154,7 +153,7 @@ namespace Tomighty.Tools
 
                 engine.StartTimer(IntervalType.LongBreak);
                 PumpUi();
-                CaptureAndAssertDrivenState(outputDirectory, images, window, "06-long-break-running", "Long Break", true, "Interrupt", BreakActionButtonBackColor);
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "06-long-break-running", "Long Break", true, "Interrupt", ActionButtonBackColor);
 
                 ClickPrimaryAction(window);
                 PumpUi();
@@ -170,13 +169,13 @@ namespace Tomighty.Tools
                     "Pomodoro Completed",
                     false,
                     "Start Short break",
-                    BreakActionButtonBackColor,
+                    ActionButtonBackColor,
                     "Skip Break",
-                    NeutralActionButtonBackColor);
+                    ActionButtonBackColor);
 
                 eventHub.Publish(new TimerStopped(IntervalType.ShortBreak, preferences.GetIntervalDuration(IntervalType.ShortBreak), Duration.Zero));
                 PumpUi();
-                CaptureAndAssertDrivenState(outputDirectory, images, window, "09-break-finished", "Break Finished", false, "Start Pomodoro", NeutralActionButtonBackColor);
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "09-break-finished", "Break Finished", false, "Start Pomodoro", ActionButtonBackColor);
 
                 SaveContactSheet(images.ToArray(), Path.Combine(outputDirectory, "all-driven-states.png"));
                 File.Copy(Path.Combine(outputDirectory, "all-driven-states.png"), primaryOutput, true);

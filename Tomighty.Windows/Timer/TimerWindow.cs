@@ -28,7 +28,7 @@ namespace Tomighty.Windows.Timer
         private const int CompactPadding = 8;
         private const int ActionButtonWidth = 180;
         private const int ActionButtonHeight = 36;
-        private const int ActionButtonGap = 8;
+        private const int ActionButtonGap = 4;
         private const int TitleHeight = 20;
         private const int DropDownSize = 30;
         private const int TimeVerticalMargin = 14;

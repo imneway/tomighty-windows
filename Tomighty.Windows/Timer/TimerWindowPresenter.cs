@@ -227,7 +227,7 @@ namespace Tomighty.Windows.Timer
                 window.UpdateTitle("Idle");
                 window.UpdateColorScheme(TimerWindow.DarkGray);
                 window.HideTimeDisplay();
-                window.SetTimerAction("Start Pomodoro", StartTimer, ModernTheme.NeutralActionButtonBackColor);
+                window.SetTimerAction("Start Pomodoro", StartTimer, ModernTheme.ActionButtonBackColor);
             }
 
             private void StartTimer()
@@ -274,7 +274,7 @@ namespace Tomighty.Windows.Timer
                 window.UpdateTitle("Short Break");
                 window.UpdateColorScheme(TimerWindow.Green);
                 window.UpdateTimeDisplay(remainingTime.ToTimeString());
-                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.BreakActionButtonBackColor);
+                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.ActionButtonBackColor);
             }
         }
 
@@ -295,7 +295,7 @@ namespace Tomighty.Windows.Timer
                 window.UpdateTitle("Long Break");
                 window.UpdateColorScheme(TimerWindow.Blue);
                 window.UpdateTimeDisplay(remainingTime.ToTimeString());
-                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.BreakActionButtonBackColor);
+                window.SetTimerAction("Interrupt", pomodoroEngine.StopTimer, ModernTheme.ActionButtonBackColor);
             }
         }
 
@@ -319,10 +319,10 @@ namespace Tomighty.Windows.Timer
                 window.SetTimerActions(
                     $"Start {pomodoroEngine.SuggestedBreakType.GetName()}",
                     StartTimer,
-                    ModernTheme.BreakActionButtonBackColor,
+                    ModernTheme.ActionButtonBackColor,
                     "Skip Break",
                     StartPomodoro,
-                    ModernTheme.NeutralActionButtonBackColor);
+                    ModernTheme.ActionButtonBackColor);
             }
 
             private void StartTimer()
@@ -353,7 +353,7 @@ namespace Tomighty.Windows.Timer
                 window.UpdateTitle("Break Finished");
                 window.UpdateColorScheme(TimerWindow.DarkGray);
                 window.HideTimeDisplay();
-                window.SetTimerAction("Start Pomodoro", StartTimer, ModernTheme.NeutralActionButtonBackColor);
+                window.SetTimerAction("Start Pomodoro", StartTimer, ModernTheme.ActionButtonBackColor);
             }
 
             private void StartTimer()
