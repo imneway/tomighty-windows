@@ -16,7 +16,7 @@ namespace Tomighty.Windows.UI
     internal static class ModernTheme
     {
         private const string TextFontName = "Segoe UI";
-        private const string TextMediumFontName = "OPPO Sans 4.0 EN Medium_opsz40";
+        private const string TextMediumFontName = "Segoe UI Variable Text Semibold";
         private const string TextSemiBoldFontName = "Segoe UI Semibold";
         private const string TimerDisplayFontName = "OPPO Sans 4.0 EN";
         private const string TimerDisplayMediumFontName = "OPPO Sans 4.0 EN Medium_opsz40";
@@ -32,14 +32,7 @@ namespace Tomighty.Windows.UI
 
         public static Color WindowBackColor => IsLightTheme ? CommandPaletteLightBaseColor : CommandPaletteDarkBaseColor;
         public static Color TimerWindowBackColor => WindowBackColor;
-        public static Color TimerWindowSurfaceBackColor => IsLightTheme ? Color.FromArgb(218, 236, 248) : Color.FromArgb(42, 44, 52);
         public static Color TimerWindowTintColor => IsLightTheme ? Color.FromArgb(72, 255, 255, 255) : Color.FromArgb(48, 32, 32, 32);
-        public static Color TimerWindowAcrylicStartColor => IsLightTheme ? Color.FromArgb(210, 239, 255) : Color.FromArgb(42, 44, 52);
-        public static Color TimerWindowAcrylicEndColor => IsLightTheme ? Color.FromArgb(204, 210, 242) : Color.FromArgb(28, 30, 36);
-        public static Color TimerWindowAcrylicBlueWashColor => IsLightTheme ? Color.FromArgb(86, 112, 207, 255) : Color.FromArgb(36, 98, 144, 210);
-        public static Color TimerWindowAcrylicVioletWashColor => IsLightTheme ? Color.FromArgb(70, 158, 126, 236) : Color.FromArgb(32, 126, 96, 196);
-        public static Color TimerWindowAcrylicVeilColor => IsLightTheme ? Color.FromArgb(18, 255, 255, 255) : Color.FromArgb(32, 255, 255, 255);
-        public static double TimerWindowOpacity => 1.0;
         public static Color MaterialLayerBackColor => IsLightTheme ? Color.FromArgb(160, 255, 255, 255) : Color.FromArgb(80, 32, 32, 32);
         public static Color MaterialLayerSecondaryBackColor => IsLightTheme ? Color.FromArgb(102, 255, 255, 255) : Color.FromArgb(36, 32, 32, 32);
         public static Color MaterialLayerHoverBackColor => IsLightTheme ? Color.FromArgb(190, 255, 255, 255) : Color.FromArgb(104, 48, 48, 48);
@@ -101,9 +94,9 @@ namespace Tomighty.Windows.UI
         public static void ApplyTimerWindow(Form form)
         {
             Windows11Backdrop.ApplyAcrylic(form);
-            ApplyNativeForm(form, BackdropMaterial.Acrylic, () => TimerWindowSurfaceBackColor);
-            form.BackColor = TimerWindowSurfaceBackColor;
-            form.Opacity = TimerWindowOpacity;
+            ApplyNativeForm(form, BackdropMaterial.Acrylic, () => TimerWindowBackColor);
+            form.BackColor = TimerWindowBackColor;
+            form.Opacity = 1.0;
         }
 
         public static void ApplyContextMenu(ContextMenuStrip menu)

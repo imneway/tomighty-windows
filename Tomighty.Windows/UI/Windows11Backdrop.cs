@@ -25,7 +25,6 @@ namespace Tomighty.Windows.UI
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
         private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
-        private const int DWMWA_REDIRECTIONBITMAP_ALPHA = 39;
 
         private const int DWMWCP_ROUND = 2;
         private static readonly System.Version Windows11Build = new System.Version(10, 0, 22000);
@@ -96,14 +95,14 @@ namespace Tomighty.Windows.UI
             var cornerPreference = DWMWCP_ROUND;
             TrySetAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, cornerPreference);
 
-            var useRedirectionAlpha = useAcrylicAccent ? 1 : 0;
-            TrySetAttribute(handle, DWMWA_REDIRECTIONBITMAP_ALPHA, useRedirectionAlpha);
-
             var backdrop = (int)material;
             TrySetAttribute(handle, DWMWA_SYSTEMBACKDROP_TYPE, backdrop);
 
-            var margins = Margins.ExtendIntoClientArea;
-            DwmExtendFrameIntoClientArea(handle, ref margins);
+            if (!useAcrylicAccent)
+            {
+                var margins = Margins.ExtendIntoClientArea;
+                DwmExtendFrameIntoClientArea(handle, ref margins);
+            }
 
             if (useAcrylicAccent)
                 TrySetAcrylicAccent(handle, isDarkMode);
@@ -136,7 +135,7 @@ namespace Tomighty.Windows.UI
             {
                 var tint = darkMode
                     ? ToAbgr(32, 32, 32, 142)
-                    : ToAbgr(243, 243, 243, 76);
+                    : ToAbgr(243, 243, 243, 112);
 
                 var accent = new AccentPolicy
                 {
