@@ -268,7 +268,9 @@ namespace Tomighty.Windows.Timer
         public void Show(Point location)
         {
             Location = location;
+            TopMost = true;
             Show();
+            BringToFront();
             Activate();
 
             if (IsHandleCreated)

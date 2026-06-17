@@ -46,7 +46,9 @@ namespace Tomighty.Windows.Tray
         {
             if (@event.Button == MouseButtons.Left)
             {
-                timerWindowPresenter.Toggle(GetNotifyIconCenter());
+                var iconCenter = GetNotifyIconCenter();
+                timerWindowPresenter.RememberTrayIconCenter(iconCenter);
+                timerWindowPresenter.Toggle(iconCenter);
             }
         }
 
@@ -97,6 +99,7 @@ namespace Tomighty.Windows.Tray
 
         private void OnTimerStarted(TimerStarted @event)
         {
+            timerWindowPresenter.RememberTrayIconCenter(GetNotifyIconCenter());
             UpdateTimerIcon(@event.RemainingTime);
         }
 
@@ -107,6 +110,7 @@ namespace Tomighty.Windows.Tray
 
         private void OnTimeElapsed(TimeElapsed @event)
         {
+            timerWindowPresenter.RememberTrayIconCenter(GetNotifyIconCenter());
             UpdateTimerIcon(@event.RemainingTime);
         }
 

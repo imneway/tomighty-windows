@@ -17,7 +17,11 @@ namespace Tomighty.Windows.Tray
     internal static class TrayIconFactory
     {
         private const int NotifyIconSize = 32;
+        private const float CountdownCornerRadius = 4f;
+        private const float CountdownFontSize = 19f;
         private static readonly Color MonochromeIconColor = Color.White;
+        private static readonly Color CountdownBackColor = Color.White;
+        private static readonly Color CountdownTextColor = Color.FromArgb(230, 0, 0, 0);
 
         public static Icon CreateDefaultIcon()
         {
@@ -39,20 +43,28 @@ namespace Tomighty.Windows.Tray
         {
             using (var bitmap = new Bitmap(NotifyIconSize, NotifyIconSize, PixelFormat.Format32bppArgb))
             using (var graphics = Graphics.FromImage(bitmap))
-            using (var brush = new SolidBrush(MonochromeIconColor))
+            using (var background = new SolidBrush(CountdownBackColor))
+            using (var foreground = new SolidBrush(CountdownTextColor))
             using (var format = CreateCountdownFormat())
             {
                 graphics.Clear(Color.Transparent);
                 graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
+                var bounds = new RectangleF(3.5f, 5.5f, 25f, 21f);
+                using (var path = CreateRoundedRectangle(bounds, CountdownCornerRadius))
+                {
+                    graphics.FillPath(background, path);
+                }
+
                 var text = FormatRemainingTime(remainingTime);
-                using (var font = CreateCountdownFont(text))
+                using (var font = CreateCountdownFont())
                 {
                     format.Alignment = StringAlignment.Center;
                     format.LineAlignment = StringAlignment.Center;
                     format.Trimming = StringTrimming.None;
-                    graphics.DrawString(text, font, brush, new RectangleF(0, 0, NotifyIconSize, NotifyIconSize), format);
+                    graphics.DrawString(text, font, foreground, bounds, format);
                 }
 
                 return CreateIcon(bitmap);
@@ -96,14 +108,13 @@ namespace Tomighty.Windows.Tray
             if (remainingTime.Seconds < 60)
                 return Math.Max(0, remainingTime.Seconds).ToString();
 
-            var minutes = (remainingTime.Seconds + 59) / 60;
+            var minutes = remainingTime.Seconds / 60;
             return Math.Min(99, minutes).ToString();
         }
 
-        private static Font CreateCountdownFont(string text)
+        private static Font CreateCountdownFont()
         {
-            var fontSize = text.Length > 1 ? 32f : 44f;
-            return new Font("Segoe UI Semibold", fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
+            return new Font("Segoe UI", CountdownFontSize, FontStyle.Bold, GraphicsUnit.Pixel);
         }
 
         private static StringFormat CreateCountdownFormat()
@@ -114,6 +125,20 @@ namespace Tomighty.Windows.Tray
             format.Trimming = StringTrimming.None;
             format.FormatFlags |= StringFormatFlags.NoWrap;
             return format;
+        }
+
+        private static GraphicsPath CreateRoundedRectangle(RectangleF bounds, float radius)
+        {
+            var diameter = radius * 2f;
+            var path = new GraphicsPath();
+
+            path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+
+            return path;
         }
 
         private static Icon CreateIcon(Bitmap bitmap)

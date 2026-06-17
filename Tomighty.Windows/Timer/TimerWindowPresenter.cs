@@ -31,6 +31,9 @@ namespace Tomighty.Windows.Timer
         private IWindowState currentState;
         private TimerWindow window;
         private bool _isPinned;
+        private bool requiresManualClose;
+        private bool hasLastTrayIconCenter;
+        private Point lastTrayIconCenter;
         private DateTime lastDeactivateHideTime = DateTime.MinValue;
 
         public TimerWindowPresenter(IPomodoroEngine pomodoroEngine, ICountdownClock countdownClock, IEventHub eventHub)
@@ -48,6 +51,9 @@ namespace Tomighty.Windows.Timer
             longBreakInterruptedState = new TimerInterruptedState("Long break interrupted", IntervalType.LongBreak, pomodoroEngine);
 
             currentState = idleState;
+            window = CreateTimerWindow();
+            currentState.Apply(window, countdownClock.RemainingTime);
+            EnsureWindowHandle();
 
             eventHub.Subscribe<TimerStarted>(OnTimerStarted);
             eventHub.Subscribe<TimeElapsed>(OnTimeElapsed);
@@ -74,6 +80,8 @@ namespace Tomighty.Windows.Timer
         
         public void Toggle(Point approximateLocation)
         {
+            RememberTrayIconCenter(approximateLocation);
+
             var shouldCreateWindow = window == null;
 
             if (shouldCreateWindow)
@@ -86,7 +94,7 @@ namespace Tomighty.Windows.Timer
 
             if (window.Visible)
             {
-                if (!IsPinned)
+                if (CanAutoHideWindow)
                     window.Hide();
             }
             else
@@ -106,19 +114,39 @@ namespace Tomighty.Windows.Timer
 
         private void OnTimerStarted(TimerStarted @event)
         {
-            EnterState(GetRunningTimerStateFor(@event.IntervalType), @event.RemainingTime);
+            RunOnWindowThread(() =>
+            {
+                requiresManualClose = false;
+                EnterState(GetRunningTimerStateFor(@event.IntervalType), @event.RemainingTime);
+            });
         }
 
         private void OnTimerStopped(TimerStopped @event)
         {
             if (@event.IsIntervalCompleted)
             {
-                EnterState(GetCompletedIntervalStateFor(@event.IntervalType), @event.RemainingTime);
+                RunOnWindowThread(() =>
+                {
+                    EnsureWindow();
+                    requiresManualClose = true;
+                    EnterState(GetCompletedIntervalStateFor(@event.IntervalType), @event.RemainingTime);
+                    ShowCompletionAlert();
+                });
             }
             else
             {
-                EnterState(GetTimerInterruptedStateFor(@event.IntervalType), @event.RemainingTime);
+                RunOnWindowThread(() =>
+                {
+                    requiresManualClose = false;
+                    EnterState(GetTimerInterruptedStateFor(@event.IntervalType), @event.RemainingTime);
+                });
             }
+        }
+
+        public void RememberTrayIconCenter(Point location)
+        {
+            lastTrayIconCenter = location;
+            hasLastTrayIconCenter = true;
         }
 
         private void OnTimeElapsed(TimeElapsed @event)
@@ -187,6 +215,7 @@ namespace Tomighty.Windows.Timer
 
         private void OnCloseButtonClick(object sender, System.EventArgs e)
         {
+            requiresManualClose = false;
             window.Hide();
             IsPinned = false;
         }
@@ -199,13 +228,13 @@ namespace Tomighty.Windows.Timer
 
         private void OnLostFocus(object sender, System.EventArgs e)
         {
-            if (!IsPinned && !window.ContainsFocus)
+            if (CanAutoHideWindow && !window.ContainsFocus)
                 window.Hide();
         }
 
         private void OnWindowDeactivate(object sender, System.EventArgs e)
         {
-            if (!IsPinned)
+            if (CanAutoHideWindow)
             {
                 lastDeactivateHideTime = DateTime.UtcNow;
                 window.Hide();
@@ -221,6 +250,53 @@ namespace Tomighty.Windows.Timer
 
             lastDeactivateHideTime = DateTime.MinValue;
             return true;
+        }
+
+        private bool CanAutoHideWindow => !IsPinned && !requiresManualClose;
+
+        private void EnsureWindow()
+        {
+            if (window == null)
+            {
+                window = CreateTimerWindow();
+                EnsureWindowHandle();
+            }
+        }
+
+        private void EnsureWindowHandle()
+        {
+            GC.KeepAlive(window.Handle);
+        }
+
+        private void RunOnWindowThread(Action action)
+        {
+            EnsureWindow();
+
+            if (window.InvokeRequired)
+                window.BeginInvoke(action);
+            else
+                action();
+        }
+
+        private void ShowCompletionAlert()
+        {
+            var location = window.Visible
+                ? window.Location
+                : GetCompletionAlertLocation();
+
+            window.Show(location);
+        }
+
+        private Point GetCompletionAlertLocation()
+        {
+            if (hasLastTrayIconCenter)
+                return GetLocationAboveTrayIcon(lastTrayIconCenter);
+
+            var screen = Screen.FromPoint(Cursor.Position);
+            var workingArea = screen.WorkingArea;
+            return new Point(
+                workingArea.Right - window.Width - TrayPopupGap,
+                workingArea.Bottom - window.Height - TrayPopupGap);
         }
 
         private bool IsPinned

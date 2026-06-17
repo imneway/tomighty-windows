@@ -35,6 +35,7 @@ try {
     Invoke-CheckedCommand { & ".\packages\NUnit.ConsoleRunner.3.4.1\tools\nunit3-console.exe" ".\Tomighty.Core.Test\bin\Debug\Tomighty.Core.Test.dll" } "NUnit"
     Invoke-CheckedCommand { powershell -STA -NoProfile -ExecutionPolicy Bypass -File ".\tools\smoke-dialogs.ps1" -Configuration Debug } "Dialog smoke"
     Invoke-CheckedCommand { powershell -STA -NoProfile -ExecutionPolicy Bypass -File ".\tools\smoke-timer-window.ps1" -Configuration Debug } "Timer smoke"
+    Invoke-CheckedCommand { powershell -STA -NoProfile -ExecutionPolicy Bypass -File ".\tools\smoke-tray-runtime.ps1" -Configuration Debug } "Tray runtime smoke"
 
     if (-not $SkipRelease) {
         Invoke-CheckedCommand { powershell -NoProfile -ExecutionPolicy Bypass -File ".\publish.ps1" -Mode Zip -Configuration Release } "Zip publish"
