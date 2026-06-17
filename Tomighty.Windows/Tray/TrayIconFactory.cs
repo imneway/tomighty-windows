@@ -18,7 +18,7 @@ namespace Tomighty.Windows.Tray
     {
         private const int NotifyIconSize = 32;
         private const float CountdownCornerRadius = 4f;
-        private const float CountdownFontSize = 19f;
+        private const float CountdownFontSize = 21f;
         private static readonly Color MonochromeIconColor = Color.White;
         private static readonly Color CountdownBackColor = Color.White;
         private static readonly Color CountdownTextColor = Color.FromArgb(230, 0, 0, 0);
@@ -52,7 +52,7 @@ namespace Tomighty.Windows.Tray
                 graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
-                var bounds = new RectangleF(3.5f, 5.5f, 25f, 21f);
+                var bounds = new RectangleF(0f, 2f, 32f, 28f);
                 using (var path = CreateRoundedRectangle(bounds, CountdownCornerRadius))
                 {
                     graphics.FillPath(background, path);
