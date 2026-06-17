@@ -9,6 +9,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using Tomighty.Windows.UI;
@@ -22,8 +23,14 @@ namespace Tomighty.Windows.Timer
         public static readonly Color Green = Color.FromArgb(26, 102, 41);
         public static readonly Color Blue = Color.FromArgb(22, 57, 101);
 
+        private const int WM_NCLBUTTONDOWN = 0x00A1;
+        private const int HTCAPTION = 0x0002;
+
         private Action currentTimerAction;
         private bool pinned;
+        private bool closeButtonPressed;
+        private string titleText = "Title";
+        private string timeText = "--:--";
 
         private readonly Action<string> UpdateTimeDisplayDelegate;
         private readonly Action<string> UpdateTitleDelegate;
@@ -43,13 +50,26 @@ namespace Tomighty.Windows.Timer
 
             Icon = Properties.Resources.icon_tomato_red;
 
-            titleLabel.DrawFrame = true;
             titleLabel.Font = ModernTheme.TextFont(10f);
             timeLabel.Font = ModernTheme.DisplayFont(50f);
             timerButton.Font = ModernTheme.TextFont(9.5f);
 
-            UpdateTimeDisplayDelegate = (text) => timeLabel.Text = text;
-            UpdateTitleDelegate = (text) => titleLabel.Text = text;
+            titleLabel.Visible = false;
+            timeLabel.Visible = false;
+            closeButton.Visible = false;
+
+            UpdateTimeDisplayDelegate = (text) =>
+            {
+                timeText = text;
+                timeLabel.Text = text;
+                Invalidate(timeLabel.Bounds);
+            };
+            UpdateTitleDelegate = (text) =>
+            {
+                titleText = text;
+                titleLabel.Text = text;
+                Invalidate(titleLabel.Bounds);
+            };
             UpdateTimerButtonTextDelegate = (text, action) =>
             {
                 timerButton.Text = text;
@@ -63,7 +83,7 @@ namespace Tomighty.Windows.Timer
         public void UpdateTitle(string text)
         {
             if (IsHandleCreated)
-                titleLabel.BeginInvoke(UpdateTitleDelegate, text);
+                BeginInvoke(UpdateTitleDelegate, text);
             else
                 UpdateTitleDelegate(text);
         }
@@ -81,7 +101,7 @@ namespace Tomighty.Windows.Timer
         public void UpdateTimeDisplay(string text)
         {
             if (IsHandleCreated)
-                timeLabel.BeginInvoke(UpdateTimeDisplayDelegate, text);
+                BeginInvoke(UpdateTimeDisplayDelegate, text);
             else
                 UpdateTimeDisplayDelegate(text);
         }
@@ -100,6 +120,42 @@ namespace Tomighty.Windows.Timer
         {
             Location = location;
             Show();
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                if (GetDropDownBounds().Contains(e.Location))
+                {
+                    closeButtonPressed = true;
+                    Invalidate(GetDropDownBounds());
+                    return;
+                }
+
+                ReleaseCapture();
+                SendMessage(Handle, WM_NCLBUTTONDOWN, new IntPtr(HTCAPTION), IntPtr.Zero);
+                return;
+            }
+
+            base.OnMouseDown(e);
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left && closeButtonPressed)
+            {
+                var bounds = GetDropDownBounds();
+                closeButtonPressed = false;
+                Invalidate(bounds);
+
+                if (bounds.Contains(e.Location))
+                    ((DropDownButton)closeButton).RaiseClick();
+
+                return;
+            }
+
+            base.OnMouseUp(e);
         }
 
         protected override void OnPaintBackground(PaintEventArgs e)
@@ -130,17 +186,49 @@ namespace Tomighty.Windows.Timer
             }
         }
 
-        private static void DrawMaterialSurface(Graphics graphics, Rectangle bounds, Color fill, Color border)
+        protected override void OnPaint(PaintEventArgs e)
         {
-            if (bounds.Width <= 0 || bounds.Height <= 0)
-                return;
+            base.OnPaint(e);
 
-            var surfaceBounds = new Rectangle(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
-            using (var brush = new SolidBrush(fill))
-            using (var borderPen = new Pen(border))
+            e.Graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+            DrawAlignedText(e.Graphics, titleText, titleLabel.Font, titleLabel.Bounds, StringAlignment.Center, StringAlignment.Center);
+            DrawAlignedText(e.Graphics, timeText, timeLabel.Font, timeLabel.Bounds, StringAlignment.Center, StringAlignment.Center);
+            DrawDropDownArrow(e.Graphics, GetDropDownBounds());
+        }
+
+        private void DrawAlignedText(Graphics graphics, string text, Font font, Rectangle bounds, StringAlignment alignment, StringAlignment lineAlignment)
+        {
+            using (var brush = new SolidBrush(ModernTheme.TimerTextColor))
+            using (var format = new StringFormat(StringFormatFlags.NoWrap))
             {
-                graphics.FillRectangle(brush, bounds);
-                graphics.DrawRectangle(borderPen, surfaceBounds);
+                format.Alignment = alignment;
+                format.LineAlignment = lineAlignment;
+                format.Trimming = StringTrimming.EllipsisCharacter;
+                graphics.DrawString(text, font, brush, bounds, format);
+            }
+        }
+
+        private Rectangle GetDropDownBounds()
+        {
+            return closeButton.Bounds;
+        }
+
+        private void DrawDropDownArrow(Graphics graphics, Rectangle bounds)
+        {
+            var scale = graphics.DpiX / 96f;
+            var width = 8f * scale;
+            var height = 4f * scale;
+            var centerX = bounds.Left + bounds.Width / 2f;
+            var centerY = bounds.Top + bounds.Height / 2f + 1f * scale;
+
+            using (var pen = new Pen(ModernTheme.TimerTextColor, Math.Max(1.4f, 1.6f * scale)))
+            {
+                pen.StartCap = LineCap.Round;
+                pen.EndCap = LineCap.Round;
+                graphics.DrawLine(pen, centerX - width / 2f, centerY - height / 2f, centerX, centerY + height / 2f);
+                graphics.DrawLine(pen, centerX, centerY + height / 2f, centerX + width / 2f, centerY - height / 2f);
             }
         }
 
@@ -155,14 +243,9 @@ namespace Tomighty.Windows.Timer
                 BackColor = Color.Transparent;
             }
 
-            public bool DrawFrame { get; set; }
-
             protected override void OnPaintBackground(PaintEventArgs e)
             {
                 PaintParentBackground(e);
-
-                if (DrawFrame)
-                    DrawMaterialSurface(e.Graphics, ClientRectangle, ModernTheme.MaterialLayerBackColor, ModernTheme.BorderColor);
             }
 
             protected override void OnPaint(PaintEventArgs e)
@@ -259,10 +342,10 @@ namespace Tomighty.Windows.Timer
         private void ApplyTheme()
         {
             Opacity = 1.0;
-            ForeColor = ModernTheme.TextColor;
+            ForeColor = ModernTheme.TimerTextColor;
             BackColor = ModernTheme.TimerWindowBackColor;
-            titleLabel.ForeColor = ModernTheme.TextColor;
-            timeLabel.ForeColor = ModernTheme.TextColor;
+            titleLabel.ForeColor = ModernTheme.TimerTextColor;
+            timeLabel.ForeColor = ModernTheme.TimerTextColor;
             closeButton.Invalidate();
             timerButton.Invalidate();
             Invalidate();
@@ -270,8 +353,10 @@ namespace Tomighty.Windows.Timer
 
         private class DropDownButton : Button
         {
-            private bool hovered;
-            private bool pressed;
+            public void RaiseClick()
+            {
+                OnClick(EventArgs.Empty);
+            }
 
             public DropDownButton()
             {
@@ -279,42 +364,10 @@ namespace Tomighty.Windows.Timer
                 BackColor = Color.Transparent;
             }
 
-            protected override void OnMouseEnter(EventArgs e)
-            {
-                hovered = true;
-                Invalidate();
-                base.OnMouseEnter(e);
-            }
-
-            protected override void OnMouseLeave(EventArgs e)
-            {
-                hovered = false;
-                pressed = false;
-                Invalidate();
-                base.OnMouseLeave(e);
-            }
-
-            protected override void OnMouseDown(MouseEventArgs e)
-            {
-                pressed = true;
-                Invalidate();
-                base.OnMouseDown(e);
-            }
-
-            protected override void OnMouseUp(MouseEventArgs e)
-            {
-                pressed = false;
-                Invalidate();
-                base.OnMouseUp(e);
-            }
-
             protected override void OnPaint(PaintEventArgs e)
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 PaintParentBackground(e);
-
-                var fill = pressed ? ModernTheme.ControlPressedBackColor : hovered ? ModernTheme.MaterialLayerHoverBackColor : ModernTheme.MaterialLayerBackColor;
-                DrawMaterialSurface(e.Graphics, ClientRectangle, fill, ModernTheme.BorderColor);
 
                 var scale = e.Graphics.DpiX / 96f;
                 var width = 8f * scale;
@@ -322,7 +375,7 @@ namespace Tomighty.Windows.Timer
                 var centerX = ClientRectangle.Left + ClientRectangle.Width / 2f;
                 var centerY = ClientRectangle.Top + ClientRectangle.Height / 2f + 1f * scale;
 
-                using (var pen = new Pen(ModernTheme.TextColor, Math.Max(1.4f, 1.6f * scale)))
+                using (var pen = new Pen(ModernTheme.TimerTextColor, Math.Max(1.4f, 1.6f * scale)))
                 {
                     pen.StartCap = LineCap.Round;
                     pen.EndCap = LineCap.Round;
@@ -451,5 +504,11 @@ namespace Tomighty.Windows.Timer
                 }
             }
         }
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
     }
 }
