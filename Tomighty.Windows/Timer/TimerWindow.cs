@@ -34,8 +34,8 @@ namespace Tomighty.Windows.Timer
         private const int TimeTop = 48;
         private const int TimeHeight = 56;
         private const int ActionButtonHeight = 36;
-        private const int ActionButtonCornerRadius = 6;
-        private const int WindowCornerRadius = 10;
+        private const int ActionButtonCornerRadius = 8;
+        private const int WindowCornerRadius = 12;
 
         private Action currentTimerAction;
         private bool pinned;
@@ -225,7 +225,7 @@ namespace Tomighty.Windows.Timer
             var radius = ScaleLayout(WindowCornerRadius);
             var borderBounds = new RectangleF(0.5f, 0.5f, ClientSize.Width - 1f, ClientSize.Height - 1f);
 
-            using (var path = CreateRoundedRectangle(borderBounds, radius))
+            using (var path = CreateRoundedRectangle(borderBounds, Math.Max(1f, radius - 0.5f)))
             using (var pen = new Pen(ModernTheme.BorderColor))
             {
                 e.Graphics.DrawPath(pen, path);
@@ -233,7 +233,7 @@ namespace Tomighty.Windows.Timer
 
             var highlightBounds = RectangleF.Inflate(borderBounds, -1f, -1f);
             using (var pen = new Pen(ModernTheme.InnerHighlightColor))
-            using (var path = CreateRoundedRectangle(highlightBounds, Math.Max(1f, radius - 1f)))
+            using (var path = CreateRoundedRectangle(highlightBounds, Math.Max(1f, radius - 1.5f)))
             {
                 e.Graphics.DrawPath(pen, path);
             }
@@ -544,6 +544,18 @@ namespace Tomighty.Windows.Timer
                 SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             }
 
+            protected override void OnHandleCreated(EventArgs e)
+            {
+                base.OnHandleCreated(e);
+                UpdateButtonRegion();
+            }
+
+            protected override void OnSizeChanged(EventArgs e)
+            {
+                base.OnSizeChanged(e);
+                UpdateButtonRegion();
+            }
+
             protected override void OnMouseEnter(EventArgs e)
             {
                 hovered = true;
@@ -607,6 +619,20 @@ namespace Tomighty.Windows.Timer
                 }
             }
 
+            private void UpdateButtonRegion()
+            {
+                if (Width <= 0 || Height <= 0)
+                    return;
+
+                using (var graphics = CreateGraphics())
+                using (var path = CreateRoundedRectangle(new RectangleF(0, 0, Width, Height), GetCornerRadius(graphics)))
+                {
+                    var oldRegion = Region;
+                    Region = new Region(path);
+                    oldRegion?.Dispose();
+                }
+            }
+
             private PushButtonState GetState()
             {
                 if (!Enabled)
@@ -630,8 +656,8 @@ namespace Tomighty.Windows.Timer
                         : ModernTheme.ActionButtonBackColor;
 
                 var scale = graphics.DpiX / 96f;
-                var radius = Math.Max(1f, ActionButtonCornerRadius * scale);
-                var pathBounds = new RectangleF(-scale, -scale, bounds.Width + scale * 2f, bounds.Height + scale * 2f);
+                var radius = GetCornerRadius(graphics);
+                var pathBounds = new RectangleF(0, 0, bounds.Width, bounds.Height);
                 var borderBounds = new RectangleF(0.5f * scale, 0.5f * scale, bounds.Width - scale, bounds.Height - scale);
 
                 using (var path = CreateRoundedRectangle(pathBounds, radius))
@@ -642,6 +668,11 @@ namespace Tomighty.Windows.Timer
                     graphics.FillPath(brush, path);
                     graphics.DrawPath(border, borderPath);
                 }
+            }
+
+            private static float GetCornerRadius(Graphics graphics)
+            {
+                return Math.Max(1f, ActionButtonCornerRadius * graphics.DpiX / 96f);
             }
 
             private static GraphicsPath CreateRoundedRectangle(RectangleF bounds, float radius)
