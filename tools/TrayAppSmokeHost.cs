@@ -38,8 +38,12 @@ namespace Tomighty.Tools
             var timerWindow = WaitForTomightyWindow(4000);
             AssertTopmost(timerWindow);
             AssertStaysVisibleAfterOutsideFocus(timerWindow);
-            ClickDropDown(timerWindow);
-            AssertWindowHidden(timerWindow);
+            ClickPrimaryCompletionAction(timerWindow);
+            Thread.Sleep(500);
+            if (!IsWindowVisible(timerWindow))
+                throw new InvalidOperationException("Timer window hid before outside focus after CTA acknowledgement.");
+
+            AssertHidesAfterOutsideFocus(timerWindow);
 
             return 0;
         }
@@ -238,6 +242,22 @@ namespace Tomighty.Tools
 
         private static void AssertStaysVisibleAfterOutsideFocus(IntPtr window)
         {
+            FocusOutsideWindow();
+
+            if (!IsWindowVisible(window))
+                throw new InvalidOperationException("Completion window hid after focus moved outside.");
+        }
+
+        private static void AssertHidesAfterOutsideFocus(IntPtr window)
+        {
+            FocusOutsideWindow();
+
+            if (IsWindowVisible(window))
+                throw new InvalidOperationException("Timer window stayed visible after CTA acknowledgement and outside focus.");
+        }
+
+        private static void FocusOutsideWindow()
+        {
             using (var probe = new Form())
             {
                 probe.Text = "Tomighty app smoke probe";
@@ -249,23 +269,14 @@ namespace Tomighty.Tools
                 SetForegroundWindow(probe.Handle);
                 Thread.Sleep(500);
             }
-
-            if (!IsWindowVisible(window))
-                throw new InvalidOperationException("Completion window hid after focus moved outside.");
         }
 
-        private static void ClickDropDown(IntPtr window)
+        private static void ClickPrimaryCompletionAction(IntPtr window)
         {
             Rect rect;
             GetWindowRect(window, out rect);
-            LeftClick(rect.Right - 24, rect.Top + 18);
+            LeftClick(rect.Left + (rect.Right - rect.Left) / 3, rect.Bottom - 24);
             Thread.Sleep(500);
-        }
-
-        private static void AssertWindowHidden(IntPtr window)
-        {
-            if (IsWindowVisible(window))
-                throw new InvalidOperationException("Completion window did not hide after manual close.");
         }
 
         private static void RightClick(AutomationElement element)

@@ -158,25 +158,19 @@ namespace Tomighty.Tools
             if (!IsTopmostWindow(window.Handle))
                 throw new InvalidOperationException("Completion window is missing WS_EX_TOPMOST.");
 
-            using (var probe = new Form())
-            {
-                probe.Text = "Tomighty tray runtime smoke probe";
-                probe.ShowInTaskbar = false;
-                probe.StartPosition = FormStartPosition.Manual;
-                probe.Bounds = new Rectangle(window.Right + 20, window.Top, 120, 80);
-                probe.Show();
-                probe.Activate();
-                SetForegroundWindow(probe.Handle);
-                PumpUi(500);
+            FocusOutsideWindow(window);
 
-                if (!window.Visible)
-                    throw new InvalidOperationException("Completion window hid after focus moved outside.");
-            }
+            if (!window.Visible)
+                throw new InvalidOperationException("Completion window hid after focus moved outside.");
 
-            ClickDropDownButton(window);
+            ClickPrimaryActionButton(window);
             PumpUi(250);
+            if (!window.Visible)
+                throw new InvalidOperationException("Completion window hid before the outside click after CTA acknowledgement.");
+
+            FocusOutsideWindow(window);
             if (window.Visible)
-                throw new InvalidOperationException("Completion window did not hide after manual close.");
+                throw new InvalidOperationException("Completion window stayed visible after CTA acknowledgement and outside focus.");
         }
 
         private static TimerWindow GetPresenterWindow(object presenter)
@@ -189,10 +183,43 @@ namespace Tomighty.Tools
             return window;
         }
 
+        private static void FocusOutsideWindow(TimerWindow window)
+        {
+            using (var probe = new Form())
+            {
+                probe.Text = "Tomighty tray runtime smoke probe";
+                probe.ShowInTaskbar = false;
+                probe.StartPosition = FormStartPosition.Manual;
+                probe.Bounds = new Rectangle(window.Right + 20, window.Top, 120, 80);
+                probe.Show();
+                probe.Activate();
+                SetForegroundWindow(probe.Handle);
+                PumpUi(500);
+            }
+        }
+
         private static void ClickDropDownButton(TimerWindow window)
         {
             var bounds = (Rectangle)typeof(TimerWindow)
                 .GetMethod("GetDropDownBounds", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[0]);
+            var x = bounds.Left + bounds.Width / 2;
+            var y = bounds.Top + bounds.Height / 2;
+            var args = new MouseEventArgs(MouseButtons.Left, 1, x, y, 0);
+
+            typeof(TimerWindow)
+                .GetMethod("OnMouseDown", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[] { args });
+            PumpUi(80);
+            typeof(TimerWindow)
+                .GetMethod("OnMouseUp", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[] { args });
+        }
+
+        private static void ClickPrimaryActionButton(TimerWindow window)
+        {
+            var bounds = (Rectangle)typeof(TimerWindow)
+                .GetMethod("GetPrimaryActionButtonBounds", BindingFlags.Instance | BindingFlags.NonPublic)
                 .Invoke(window, new object[0]);
             var x = bounds.Left + bounds.Width / 2;
             var y = bounds.Top + bounds.Height / 2;
@@ -229,8 +256,8 @@ namespace Tomighty.Tools
             public Duration GetIntervalDuration(IntervalType intervalType)
             {
                 if (intervalType == IntervalType.Pomodoro) return new Duration(RuntimePomodoroSeconds);
-                if (intervalType == IntervalType.ShortBreak) return new Duration(2);
-                if (intervalType == IntervalType.LongBreak) return new Duration(2);
+                if (intervalType == IntervalType.ShortBreak) return new Duration(10);
+                if (intervalType == IntervalType.LongBreak) return new Duration(10);
                 throw new ArgumentException($"Unsupported interval type: {intervalType}");
             }
 

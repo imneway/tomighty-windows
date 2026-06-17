@@ -44,8 +44,8 @@ namespace Tomighty.Windows.Timer
             pomodoroState = new PomodoroState(pomodoroEngine);
             shortBreakState = new ShortBreakState(pomodoroEngine);
             longBreakState = new LongBreakState(pomodoroEngine);
-            pomodoroCompletedState = new PomodoroCompletedState(pomodoroEngine);
-            breakFinishedState = new BreakFinishedState(pomodoroEngine);
+            pomodoroCompletedState = new PomodoroCompletedState(pomodoroEngine, AcknowledgeCompletion);
+            breakFinishedState = new BreakFinishedState(pomodoroEngine, AcknowledgeCompletion);
             pomodoroInterruptedState = new TimerInterruptedState("Pomodoro interrupted", IntervalType.Pomodoro, pomodoroEngine);
             shortBreakInterruptedState = new TimerInterruptedState("Short break interrupted", IntervalType.ShortBreak, pomodoroEngine);
             longBreakInterruptedState = new TimerInterruptedState("Long break interrupted", IntervalType.LongBreak, pomodoroEngine);
@@ -254,6 +254,11 @@ namespace Tomighty.Windows.Timer
 
         private bool CanAutoHideWindow => !IsPinned && !requiresManualClose;
 
+        private void AcknowledgeCompletion()
+        {
+            requiresManualClose = false;
+        }
+
         private void EnsureWindow()
         {
             if (window == null)
@@ -413,10 +418,12 @@ namespace Tomighty.Windows.Timer
         private class PomodoroCompletedState : IWindowState
         {
             private readonly IPomodoroEngine pomodoroEngine;
+            private readonly Action acknowledgeCompletion;
 
-            public PomodoroCompletedState(IPomodoroEngine pomodoroEngine)
+            public PomodoroCompletedState(IPomodoroEngine pomodoroEngine, Action acknowledgeCompletion)
             {
                 this.pomodoroEngine = pomodoroEngine;
+                this.acknowledgeCompletion = acknowledgeCompletion;
             }
 
             public void Apply(TimerWindow window, Duration remainingTime)
@@ -439,11 +446,13 @@ namespace Tomighty.Windows.Timer
 
             private void StartShortBreak()
             {
+                acknowledgeCompletion();
                 pomodoroEngine.StartTimer(IntervalType.ShortBreak);
             }
 
             private void StartLongBreak()
             {
+                acknowledgeCompletion();
                 pomodoroEngine.StartTimer(IntervalType.LongBreak);
             }
         }
@@ -451,10 +460,12 @@ namespace Tomighty.Windows.Timer
         private class BreakFinishedState : IWindowState
         {
             private readonly IPomodoroEngine pomodoroEngine;
+            private readonly Action acknowledgeCompletion;
 
-            public BreakFinishedState(IPomodoroEngine pomodoroEngine)
+            public BreakFinishedState(IPomodoroEngine pomodoroEngine, Action acknowledgeCompletion)
             {
                 this.pomodoroEngine = pomodoroEngine;
+                this.acknowledgeCompletion = acknowledgeCompletion;
             }
 
             public void Apply(TimerWindow window, Duration remainingTime)
@@ -470,6 +481,7 @@ namespace Tomighty.Windows.Timer
 
             private void StartTimer()
             {
+                acknowledgeCompletion();
                 pomodoroEngine.StartTimer(IntervalType.Pomodoro);
             }
         }
