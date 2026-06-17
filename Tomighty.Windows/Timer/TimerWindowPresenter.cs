@@ -323,7 +323,7 @@ namespace Tomighty.Windows.Timer
                     ModernTheme.BreakActionButtonBackColor,
                     "Long",
                     StartLongBreak,
-                    ModernTheme.BreakActionButtonBackColor);
+                    ModernTheme.NeutralActionButtonBackColor);
             }
 
             private void StartShortBreak()

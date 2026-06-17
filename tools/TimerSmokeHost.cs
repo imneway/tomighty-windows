@@ -15,9 +15,10 @@ namespace Tomighty.Tools
 {
     internal static class TimerSmokeHost
     {
-        private static readonly Color ActionButtonBackColor = Color.FromArgb(197, 47, 61);
-        private static readonly Color BreakActionButtonBackColor = Color.FromArgb(0, 155, 59);
-        private static readonly Color NeutralActionButtonBackColor = Color.FromArgb(133, 137, 145);
+        private static Color ActionButtonBackColor => GetModernThemeColor("ActionButtonBackColor");
+        private static Color BreakActionButtonBackColor => GetModernThemeColor("BreakActionButtonBackColor");
+        private static Color NeutralActionButtonBackColor => GetModernThemeColor("NeutralActionButtonBackColor");
+        private static Color ActionButtonBorderColor => GetModernThemeColor("ActionButtonBorderColor");
 
         [STAThread]
         private static int Main(string[] args)
@@ -91,7 +92,7 @@ namespace Tomighty.Tools
                 TimerStateShot.Timed("02-short-break", "Short Break", "05:00", "Interrupt", BreakActionButtonBackColor),
                 TimerStateShot.Timed("03-long-break", "Long Break", "15:00", "Interrupt", BreakActionButtonBackColor),
                 TimerStateShot.Message("04-idle", "Idle", "Start Pomodoro", ActionButtonBackColor),
-                TimerStateShot.MessageActions("05-pomodoro-finished", "Pomodoro finished", "Take a break", "Short", BreakActionButtonBackColor, "Long", BreakActionButtonBackColor),
+                TimerStateShot.MessageActions("05-pomodoro-finished", "Pomodoro finished", "Take a break", "Short", BreakActionButtonBackColor, "Long", NeutralActionButtonBackColor),
                 TimerStateShot.Message("06-break-finished", "Break Finished", "Start Pomodoro", ActionButtonBackColor),
                 TimerStateShot.Message("07-pomodoro-interrupted", "Pomodoro interrupted", "Restart", NeutralActionButtonBackColor),
                 TimerStateShot.Message("08-short-break-interrupted", "Short break interrupted", "Restart", NeutralActionButtonBackColor),
@@ -194,7 +195,7 @@ namespace Tomighty.Tools
                     "Short",
                     BreakActionButtonBackColor,
                     "Long",
-                    BreakActionButtonBackColor,
+                    NeutralActionButtonBackColor,
                     "Take a break");
 
                 eventHub.Publish(new TimerStopped(IntervalType.ShortBreak, preferences.GetIntervalDuration(IntervalType.ShortBreak), Duration.Zero));
@@ -287,6 +288,7 @@ namespace Tomighty.Tools
             AssertEqual("messageText", messageText, GetPrivateField<string>(window, "messageText"));
             AssertEqual("timerWindowForeColor", GetModernThemeColor("TimerTextColor").ToArgb(), window.ForeColor.ToArgb());
             AssertEqual("timerWindowBackColor", GetModernThemeColor("TimerWindowBackColor").ToArgb(), window.BackColor.ToArgb());
+            AssertExpectedThemeActionColors();
             AssertEqual("primaryActionText", primaryActionText, GetPrivateField<string>(window, "primaryActionText"));
             AssertEqual("primaryActionButtonColor", primaryActionColor.ToArgb(), GetPrivateField<Color>(window, "primaryActionButtonColor").ToArgb());
             AssertEqual("secondaryActionText", secondaryActionText, GetPrivateField<string>(window, "secondaryActionText"));
@@ -296,6 +298,15 @@ namespace Tomighty.Tools
                 AssertEqual("secondaryActionButtonColor", secondaryActionColor.GetValueOrDefault().ToArgb(), GetPrivateField<Color>(window, "secondaryActionButtonColor").ToArgb());
                 AssertHorizontalActionButtons(window);
             }
+        }
+
+        private static void AssertExpectedThemeActionColors()
+        {
+            var isLightTheme = GetModernThemeBool("IsTimerWindowLightTheme");
+            AssertEqual("themeActionButtonColor", (isLightTheme ? Color.FromArgb(197, 47, 61) : Color.FromArgb(69, 0, 0)).ToArgb(), ActionButtonBackColor.ToArgb());
+            AssertEqual("themeBreakButtonColor", (isLightTheme ? Color.FromArgb(0, 155, 59) : Color.FromArgb(2, 53, 23)).ToArgb(), BreakActionButtonBackColor.ToArgb());
+            AssertEqual("themeNeutralButtonColor", (isLightTheme ? Color.FromArgb(133, 137, 145) : Color.FromArgb(47, 48, 50)).ToArgb(), NeutralActionButtonBackColor.ToArgb());
+            AssertEqual("themeActionButtonBorderColor", (isLightTheme ? Color.FromArgb(31, 0, 0, 0) : Color.FromArgb(31, 255, 255, 255)).ToArgb(), ActionButtonBorderColor.ToArgb());
         }
 
         private static void AssertHorizontalActionButtons(TimerWindow window)
@@ -322,6 +333,12 @@ namespace Tomighty.Tools
         {
             var themeType = typeof(TimerWindow).Assembly.GetType("Tomighty.Windows.UI.ModernTheme", true);
             return (Color)themeType.GetProperty(propertyName, BindingFlags.Static | BindingFlags.Public).GetValue(null, null);
+        }
+
+        private static bool GetModernThemeBool(string propertyName)
+        {
+            var themeType = typeof(TimerWindow).Assembly.GetType("Tomighty.Windows.UI.ModernTheme", true);
+            return (bool)themeType.GetProperty(propertyName, BindingFlags.Static | BindingFlags.Public).GetValue(null, null);
         }
 
         private static void AssertEqual<T>(string name, T expected, T actual)
