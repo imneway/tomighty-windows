@@ -30,7 +30,7 @@ if (-not (Test-Path $csc)) {
 
 & $csc `
     /nologo `
-    /target:winexe `
+    /target:exe `
     /out:$hostExe `
     /reference:System.dll `
     /reference:System.Drawing.dll `

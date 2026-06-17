@@ -1,11 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using Tomighty.Events;
 using Tomighty.Windows.Timer;
 
 namespace Tomighty.Tools
@@ -42,6 +45,10 @@ namespace Tomighty.Tools
                 Application.DoEvents();
 
                 CaptureStates(args[0], new Point(80, 80), backdrop);
+                CapturePresenterDrivenStates(
+                    Path.Combine(Path.GetDirectoryName(args[0]), "timer-window-driven.png"),
+                    new Point(80, 80),
+                    backdrop);
                 backdrop.Close();
             }
 
@@ -64,9 +71,9 @@ namespace Tomighty.Tools
                 TimerStateShot.Message("05-pomodoro-completed-short", "Pomodoro Completed", "Start Short break", BreakActionButtonBackColor, "Skip Break", NeutralActionButtonBackColor),
                 TimerStateShot.Message("06-pomodoro-completed-long", "Pomodoro Completed", "Start Long break", BreakActionButtonBackColor, "Skip Break", NeutralActionButtonBackColor),
                 TimerStateShot.Message("07-break-finished", "Break Finished", "Start Pomodoro", NeutralActionButtonBackColor),
-                TimerStateShot.Message("08-pomodoro-interrupted", "Pomodoro Interrupted", "Restart", NeutralActionButtonBackColor),
-                TimerStateShot.Message("09-short-break-interrupted", "Short Break Interrupted", "Restart", NeutralActionButtonBackColor),
-                TimerStateShot.Message("10-long-break-interrupted", "Long Break Interrupted", "Restart", NeutralActionButtonBackColor)
+                TimerStateShot.Message("08-pomodoro-interrupted", "Pomodoro interrupted", "Restart", NeutralActionButtonBackColor),
+                TimerStateShot.Message("09-short-break-interrupted", "Short break interrupted", "Restart", NeutralActionButtonBackColor),
+                TimerStateShot.Message("10-long-break-interrupted", "Long break interrupted", "Restart", NeutralActionButtonBackColor)
             };
 
             var images = new Bitmap[shots.Length];
@@ -100,6 +107,183 @@ namespace Tomighty.Tools
                     if (images[index] != null)
                         images[index].Dispose();
                 }
+            }
+        }
+
+        private static void CapturePresenterDrivenStates(string primaryOutput, Point location, IWin32Window owner)
+        {
+            var outputDirectory = Path.Combine(Path.GetDirectoryName(primaryOutput), "timer-window-driven-states");
+            Directory.CreateDirectory(outputDirectory);
+            foreach (var stalePng in Directory.GetFiles(outputDirectory, "*.png"))
+                File.Delete(stalePng);
+
+            var eventHub = new SynchronousEventHub();
+            var timer = new Tomighty.Timer(eventHub);
+            var preferences = new SmokeUserPreferences();
+            var engine = new PomodoroEngine(timer, preferences, eventHub);
+            var presenter = CreateTimerWindowPresenter(engine, timer, eventHub);
+            var images = new List<Bitmap>();
+
+            try
+            {
+                InvokePresenterToggle(presenter, location);
+                var window = GetPresenterWindow(presenter);
+                window.TopMost = true;
+                window.Location = location;
+                window.Activate();
+                window.BringToFront();
+                PumpUi();
+
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "01-idle", "Idle", false, "Start Pomodoro", NeutralActionButtonBackColor);
+
+                engine.StartTimer(IntervalType.Pomodoro);
+                PumpUi();
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "02-pomodoro-running", "Pomodoro", true, "Interrupt", ActionButtonBackColor);
+
+                ClickPrimaryAction(window);
+                PumpUi();
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "03-pomodoro-interrupted", "Pomodoro interrupted", false, "Restart", NeutralActionButtonBackColor);
+
+                engine.StartTimer(IntervalType.ShortBreak);
+                PumpUi();
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "04-short-break-running", "Short Break", true, "Interrupt", BreakActionButtonBackColor);
+
+                ClickPrimaryAction(window);
+                PumpUi();
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "05-short-break-interrupted", "Short break interrupted", false, "Restart", NeutralActionButtonBackColor);
+
+                engine.StartTimer(IntervalType.LongBreak);
+                PumpUi();
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "06-long-break-running", "Long Break", true, "Interrupt", BreakActionButtonBackColor);
+
+                ClickPrimaryAction(window);
+                PumpUi();
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "07-long-break-interrupted", "Long break interrupted", false, "Restart", NeutralActionButtonBackColor);
+
+                eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
+                PumpUi();
+                CaptureAndAssertDrivenState(
+                    outputDirectory,
+                    images,
+                    window,
+                    "08-pomodoro-completed",
+                    "Pomodoro Completed",
+                    false,
+                    "Start Short break",
+                    BreakActionButtonBackColor,
+                    "Skip Break",
+                    NeutralActionButtonBackColor);
+
+                eventHub.Publish(new TimerStopped(IntervalType.ShortBreak, preferences.GetIntervalDuration(IntervalType.ShortBreak), Duration.Zero));
+                PumpUi();
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "09-break-finished", "Break Finished", false, "Start Pomodoro", NeutralActionButtonBackColor);
+
+                SaveContactSheet(images.ToArray(), Path.Combine(outputDirectory, "all-driven-states.png"));
+                File.Copy(Path.Combine(outputDirectory, "all-driven-states.png"), primaryOutput, true);
+                window.Close();
+            }
+            finally
+            {
+                foreach (var image in images)
+                    image.Dispose();
+            }
+        }
+
+        private static object CreateTimerWindowPresenter(IPomodoroEngine engine, ICountdownClock countdownClock, IEventHub eventHub)
+        {
+            var presenterType = typeof(TimerWindow).Assembly.GetType("Tomighty.Windows.Timer.TimerWindowPresenter", true);
+            return Activator.CreateInstance(
+                presenterType,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                new object[] { engine, countdownClock, eventHub },
+                null);
+        }
+
+        private static void InvokePresenterToggle(object presenter, Point location)
+        {
+            var method = presenter.GetType().GetMethod("Toggle", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            method.Invoke(presenter, new object[] { location });
+        }
+
+        private static TimerWindow GetPresenterWindow(object presenter)
+        {
+            var field = presenter.GetType().GetField("window", BindingFlags.Instance | BindingFlags.NonPublic);
+            var window = field.GetValue(presenter) as TimerWindow;
+            if (window == null)
+                throw new InvalidOperationException("TimerWindowPresenter did not create a timer window.");
+
+            return window;
+        }
+
+        private static void ClickPrimaryAction(TimerWindow window)
+        {
+            var bounds = (Rectangle)typeof(TimerWindow)
+                .GetMethod("GetPrimaryActionButtonBounds", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[0]);
+            var x = bounds.Left + bounds.Width / 2;
+            var y = bounds.Top + bounds.Height / 2;
+            var args = new MouseEventArgs(MouseButtons.Left, 1, x, y, 0);
+
+            typeof(TimerWindow).GetMethod("OnMouseDown", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(window, new object[] { args });
+            typeof(TimerWindow).GetMethod("OnMouseUp", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(window, new object[] { args });
+        }
+
+        private static void CaptureAndAssertDrivenState(
+            string outputDirectory,
+            List<Bitmap> images,
+            TimerWindow window,
+            string fileName,
+            string title,
+            bool showTime,
+            string primaryActionText,
+            Color primaryActionColor,
+            string secondaryActionText = "",
+            Color? secondaryActionColor = null)
+        {
+            AssertTimerWindowState(window, title, showTime, primaryActionText, primaryActionColor, secondaryActionText, secondaryActionColor);
+
+            var path = Path.Combine(outputDirectory, fileName + ".png");
+            CaptureWindow(window.Handle, path);
+            images.Add(new Bitmap(path));
+        }
+
+        private static void AssertTimerWindowState(
+            TimerWindow window,
+            string title,
+            bool showTime,
+            string primaryActionText,
+            Color primaryActionColor,
+            string secondaryActionText,
+            Color? secondaryActionColor)
+        {
+            AssertEqual("title", title, GetPrivateField<string>(window, "titleText"));
+            AssertEqual("timeDisplayVisible", showTime, GetPrivateField<bool>(window, "timeDisplayVisible"));
+            AssertEqual("primaryActionText", primaryActionText, GetPrivateField<string>(window, "primaryActionText"));
+            AssertEqual("primaryActionButtonColor", primaryActionColor.ToArgb(), GetPrivateField<Color>(window, "primaryActionButtonColor").ToArgb());
+            AssertEqual("secondaryActionText", secondaryActionText, GetPrivateField<string>(window, "secondaryActionText"));
+
+            if (!string.IsNullOrEmpty(secondaryActionText))
+                AssertEqual("secondaryActionButtonColor", secondaryActionColor.GetValueOrDefault().ToArgb(), GetPrivateField<Color>(window, "secondaryActionButtonColor").ToArgb());
+        }
+
+        private static T GetPrivateField<T>(object instance, string name)
+        {
+            return (T)instance.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(instance);
+        }
+
+        private static void AssertEqual<T>(string name, T expected, T actual)
+        {
+            if (!Equals(expected, actual))
+                throw new InvalidOperationException($"{name}: expected '{expected}', got '{actual}'.");
+        }
+
+        private static void PumpUi()
+        {
+            for (var index = 0; index < 5; index++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(80);
             }
         }
 
@@ -213,6 +397,27 @@ namespace Tomighty.Tools
             public static TimerStateShot Message(string fileName, string title, string primaryActionText, Color primaryActionColor, string secondaryActionText, Color secondaryActionColor)
             {
                 return new TimerStateShot(fileName, title, "", false, primaryActionColor, primaryActionText, primaryActionColor, secondaryActionText, secondaryActionColor);
+            }
+        }
+
+        private sealed class SmokeUserPreferences : IUserPreferences
+        {
+            public Duration GetIntervalDuration(IntervalType intervalType)
+            {
+                if (intervalType == IntervalType.Pomodoro) return Duration.InMinutes(25);
+                if (intervalType == IntervalType.ShortBreak) return Duration.InMinutes(5);
+                if (intervalType == IntervalType.LongBreak) return Duration.InMinutes(15);
+                throw new ArgumentException($"Unsupported interval type: {intervalType}");
+            }
+
+            public int MaxPomodoroCount => 4;
+            public bool ShowToastNotifications => false;
+            public bool PlaySoundNotifications => false;
+            public bool AutoUpdate => false;
+
+            public void Update(Action<IMutableUserPreferences> action)
+            {
+                throw new NotSupportedException();
             }
         }
 

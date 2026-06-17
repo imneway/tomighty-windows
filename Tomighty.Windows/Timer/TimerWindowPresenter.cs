@@ -41,9 +41,9 @@ namespace Tomighty.Windows.Timer
             longBreakState = new LongBreakState(pomodoroEngine);
             pomodoroCompletedState = new PomodoroCompletedState(pomodoroEngine);
             breakFinishedState = new BreakFinishedState(pomodoroEngine);
-            pomodoroInterruptedState = new TimerInterruptedState("Pomodoro Interrupted", IntervalType.Pomodoro, pomodoroEngine);
-            shortBreakInterruptedState = new TimerInterruptedState("Short Break Interrupted", IntervalType.ShortBreak, pomodoroEngine);
-            longBreakInterruptedState = new TimerInterruptedState("Long Break Interrupted", IntervalType.LongBreak, pomodoroEngine);
+            pomodoroInterruptedState = new TimerInterruptedState("Pomodoro interrupted", IntervalType.Pomodoro, pomodoroEngine);
+            shortBreakInterruptedState = new TimerInterruptedState("Short break interrupted", IntervalType.ShortBreak, pomodoroEngine);
+            longBreakInterruptedState = new TimerInterruptedState("Long break interrupted", IntervalType.LongBreak, pomodoroEngine);
 
             currentState = idleState;
 
