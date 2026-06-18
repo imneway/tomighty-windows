@@ -82,7 +82,7 @@ namespace Tomighty.Windows.Timer
             autoHideTimer.Tick += (sender, args) =>
             {
                 HideIfFocusMovedOutside();
-                ShowPendingCompletionAlertIfAllowed();
+                UpdateCompletionAlertFullscreenState();
             };
             autoHideTimer.Start();
         }
@@ -144,6 +144,7 @@ namespace Tomighty.Windows.Timer
             RunOnWindowThread(() =>
             {
                 requiresManualClose = false;
+                completionAlertPending = false;
                 EnterState(GetRunningTimerStateFor(@event.IntervalType), @event.RemainingTime);
             });
         }
@@ -165,6 +166,7 @@ namespace Tomighty.Windows.Timer
                 RunOnWindowThread(() =>
                 {
                     requiresManualClose = false;
+                    completionAlertPending = false;
                     EnterState(GetTimerInterruptedStateFor(@event.IntervalType), @event.RemainingTime);
                 });
             }
@@ -243,6 +245,7 @@ namespace Tomighty.Windows.Timer
         private void OnCloseButtonClick(object sender, System.EventArgs e)
         {
             requiresManualClose = false;
+            completionAlertPending = false;
             window.Hide();
             IsPinned = false;
         }
@@ -379,9 +382,22 @@ namespace Tomighty.Windows.Timer
             ShowCompletionAlertNow();
         }
 
-        private void ShowPendingCompletionAlertIfAllowed()
+        private void UpdateCompletionAlertFullscreenState()
         {
-            if (!completionAlertPending || window == null || window.Visible || ShouldSuppressCompletionAlert())
+            if (window == null || !requiresManualClose)
+                return;
+
+            var shouldSuppress = ShouldSuppressCompletionAlert();
+
+            if (window.Visible && shouldSuppress)
+            {
+                completionAlertPending = true;
+                window.TopMost = false;
+                window.Hide();
+                return;
+            }
+
+            if (!completionAlertPending || window.Visible || shouldSuppress)
                 return;
 
             completionAlertPending = false;

@@ -427,7 +427,42 @@ namespace Tomighty.Tools
 
             window.Close();
 
+            AssertVisibleCompletionAlertTracksFullscreenTransitions();
             AssertCompletionAlertIgnoresFullscreenWhenPreferenceIsOff();
+        }
+
+        private static void AssertVisibleCompletionAlertTracksFullscreenTransitions()
+        {
+            var eventHub = new SynchronousEventHub();
+            var timer = new Tomighty.Timer(eventHub);
+            var preferences = new SmokeUserPreferences { SuppressPopupInFullscreenApps = true };
+            var engine = new PomodoroEngine(timer, preferences, eventHub);
+            var fullscreenDetector = new ToggleFullscreenDetector { IsFullscreen = false };
+            var presenter = CreateTimerWindowPresenter(engine, timer, eventHub, preferences, fullscreenDetector);
+            var window = GetPresenterWindow(presenter);
+
+            eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
+            PumpUi();
+
+            if (!window.Visible)
+                throw new InvalidOperationException("Completion alert did not appear when no fullscreen window was active.");
+
+            for (var index = 0; index < 2; index++)
+            {
+                fullscreenDetector.IsFullscreen = true;
+                PumpUi();
+
+                if (window.Visible)
+                    throw new InvalidOperationException("Visible completion alert was not hidden after a fullscreen window became active.");
+
+                fullscreenDetector.IsFullscreen = false;
+                PumpUi();
+
+                if (!window.Visible)
+                    throw new InvalidOperationException("Hidden completion alert did not return after the fullscreen window exited.");
+            }
+
+            window.Close();
         }
 
         private static void AssertCompletionAlertIgnoresFullscreenWhenPreferenceIsOff()
