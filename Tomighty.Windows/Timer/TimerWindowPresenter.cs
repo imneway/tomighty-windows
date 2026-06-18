@@ -30,6 +30,7 @@ namespace Tomighty.Windows.Timer
 
         private IWindowState currentState;
         private TimerWindow window;
+        private readonly System.Windows.Forms.Timer autoHideTimer;
         private bool _isPinned;
         private bool requiresManualClose;
         private bool hasLastTrayIconCenter;
@@ -58,6 +59,10 @@ namespace Tomighty.Windows.Timer
             eventHub.Subscribe<TimerStarted>(OnTimerStarted);
             eventHub.Subscribe<TimeElapsed>(OnTimeElapsed);
             eventHub.Subscribe<TimerStopped>(OnTimerStopped);
+
+            autoHideTimer = new System.Windows.Forms.Timer { Interval = 150 };
+            autoHideTimer.Tick += (sender, args) => HideIfFocusMovedOutside();
+            autoHideTimer.Start();
         }
 
         private TimerWindow CreateTimerWindow()
@@ -235,6 +240,18 @@ namespace Tomighty.Windows.Timer
         private void OnWindowDeactivate(object sender, System.EventArgs e)
         {
             if (CanAutoHideWindow)
+            {
+                lastDeactivateHideTime = DateTime.UtcNow;
+                window.Hide();
+            }
+        }
+
+        private void HideIfFocusMovedOutside()
+        {
+            if (window == null || !window.Visible || !CanAutoHideWindow)
+                return;
+
+            if (!window.ContainsFocus && Form.ActiveForm != window)
             {
                 lastDeactivateHideTime = DateTime.UtcNow;
                 window.Hide();

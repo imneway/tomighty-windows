@@ -27,8 +27,8 @@ namespace Tomighty.Tools
             System.IO.Directory.CreateDirectory(outputDirectory);
 
             var trayButton = WaitForTrayButton();
-            RightClick(trayButton);
-            var pomodoroItem = WaitForMenuItem("Pomodoro", 3000);
+            var pomodoroItem = OpenMenuAndWaitForItem(trayButton, "Pomodoro");
+            CaptureContainingMenu(pomodoroItem, "actual-context-menu.png");
             InvokeOrClick(pomodoroItem);
 
             Thread.Sleep(1600);
@@ -68,6 +68,28 @@ namespace Tomighty.Tools
             throw new InvalidOperationException("Could not find visible Tomighty tray button.");
         }
 
+        private static AutomationElement OpenMenuAndWaitForItem(AutomationElement trayButton, string menuItemName)
+        {
+            Exception lastError = null;
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                RightClick(trayButton);
+                try
+                {
+                    return WaitForMenuItem(menuItemName, 2000);
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    SendKeys.SendWait("{ESC}");
+                    Thread.Sleep(250);
+                    trayButton = WaitForTrayButton();
+                }
+            }
+
+            throw new InvalidOperationException($"Could not find '{menuItemName}' menu item after retrying.", lastError);
+        }
+
         private static AutomationElement FindTrayButton()
         {
             AutomationElement result;
@@ -100,7 +122,7 @@ namespace Tomighty.Tools
             {
                 var button = buttons[index];
                 var name = button.Current.Name ?? "";
-                if (name.IndexOf("Tomighty", StringComparison.OrdinalIgnoreCase) >= 0)
+                if (IsTomightyTrayButtonName(name))
                 {
                     result = button;
                     return true;
@@ -148,6 +170,11 @@ namespace Tomighty.Tools
                     writer.WriteLine("  " + (button.Current.Name ?? "") + " " + button.Current.BoundingRectangle);
                 }
             }
+        }
+
+        private static bool IsTomightyTrayButtonName(string name)
+        {
+            return string.Equals(name.Trim(), "Tomighty", StringComparison.OrdinalIgnoreCase);
         }
 
         private static AutomationElement WaitForMenuItem(string name, int timeoutMilliseconds)
@@ -339,6 +366,93 @@ namespace Tomighty.Tools
             }
         }
 
+        private static void CaptureContainingMenu(AutomationElement element, string fileName)
+        {
+            Rect menuRect;
+            if (TryGetVisiblePopupMenuBounds(out menuRect))
+            {
+                CaptureBounds(menuRect, fileName, 8);
+                return;
+            }
+
+            var best = element;
+            var parent = TreeWalker.RawViewWalker.GetParent(element);
+            while (parent != null)
+            {
+                if (parent.Current.ProcessId == processId && IsLargerThan(parent, best))
+                    best = parent;
+
+                if (parent.Current.ControlType == ControlType.Menu)
+                {
+                    best = parent;
+                    break;
+                }
+
+                parent = TreeWalker.RawViewWalker.GetParent(parent);
+            }
+
+            CaptureElement(best, fileName);
+        }
+
+        private static bool IsLargerThan(AutomationElement candidate, AutomationElement current)
+        {
+            var candidateRect = candidate.Current.BoundingRectangle;
+            var currentRect = current.Current.BoundingRectangle;
+            return candidateRect.Width >= currentRect.Width &&
+                candidateRect.Height >= currentRect.Height &&
+                candidateRect.Width > 0 &&
+                candidateRect.Height > 0;
+        }
+
+        private static void CaptureBounds(Rect rect, string fileName, int inflate)
+        {
+            var bounds = Rectangle.Inflate(
+                Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom),
+                inflate,
+                inflate);
+
+            using (var bitmap = new Bitmap(bounds.Width, bounds.Height))
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
+                bitmap.Save(System.IO.Path.Combine(outputDirectory, fileName), ImageFormat.Png);
+            }
+        }
+
+        private static bool TryGetVisiblePopupMenuBounds(out Rect popupBounds)
+        {
+            var candidateBounds = new Rect();
+            var found = false;
+            EnumWindows((handle, parameter) =>
+            {
+                if (!IsWindowVisible(handle))
+                    return true;
+
+                var className = new char[256];
+                var length = GetClassName(handle, className, className.Length);
+                if (length <= 0 || new string(className, 0, length) != "#32768")
+                    return true;
+
+                uint windowProcessId;
+                GetWindowThreadProcessId(handle, out windowProcessId);
+                if (windowProcessId != processId)
+                    return true;
+
+                Rect rect;
+                if (GetWindowRect(handle, out rect) && rect.Right > rect.Left && rect.Bottom > rect.Top)
+                {
+                    candidateBounds = rect;
+                    found = true;
+                    return false;
+                }
+
+                return true;
+            }, IntPtr.Zero);
+
+            popupBounds = candidateBounds;
+            return found;
+        }
+
         private static void MouseEvent(uint flags)
         {
             mouse_event(flags, 0, 0, 0, UIntPtr.Zero);
@@ -377,6 +491,9 @@ namespace Tomighty.Tools
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern int GetClassName(IntPtr hWnd, char[] lpClassName, int nMaxCount);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct Rect

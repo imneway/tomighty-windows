@@ -52,8 +52,9 @@ namespace Tomighty.Windows.UI
         public static Color ActionButtonBorderColor => IsTimerWindowLightTheme ? Color.FromArgb(31, 0, 0, 0) : Color.FromArgb(31, 255, 255, 255);
         public static Color ActionButtonTextColor => Color.FromArgb(PrimaryTextAlpha, 255, 255, 255);
         public static Color InputBackColor => IsLightTheme ? SystemColors.Window : Color.FromArgb(32, 32, 32);
-        public static Color MenuBackColor => IsLightTheme ? SystemColors.Menu : Color.FromArgb(32, 32, 32);
-        public static Color MenuTextColor => IsLightTheme ? SystemColors.MenuText : TextColor;
+        public static Color MenuBackColor => IsLightTheme ? CommandPaletteLightBaseColor : Color.FromArgb(32, 32, 32);
+        public static Color MenuTextColor => TextColor;
+        public static Color MenuSecondaryTextColor => IsLightTheme ? Color.FromArgb(153, 0, 0, 0) : Color.FromArgb(153, 255, 255, 255);
         public static bool IsTimerDisplayFontAvailable => TimerDisplayFontAvailable.Value;
         public static bool IsTimerDisplayMediumFontAvailable => TimerDisplayMediumFontAvailable.Value;
 
@@ -119,7 +120,7 @@ namespace Tomighty.Windows.UI
         public static void ApplyContextMenu(ContextMenuStrip menu)
         {
             ApplyContextMenuColors(menu);
-            Windows11Backdrop.ApplyAcrylic(menu);
+            menu.Opening += (sender, args) => ApplyContextMenuColors(menu);
             RegisterThemeChange(menu, () => ApplyContextMenuColors(menu));
         }
 
@@ -269,9 +270,33 @@ namespace Tomighty.Windows.UI
             foreach (ToolStripItem item in menu.Items)
             {
                 item.BackColor = MenuBackColor;
-                item.ForeColor = item.Enabled ? MenuTextColor : SecondaryTextColor;
+                item.ForeColor = item.Enabled ? MenuTextColor : MenuSecondaryTextColor;
                 item.Font = item.Font == null ? SystemFonts.MessageBoxFont : new Font(SystemFonts.MessageBoxFont, item.Font.Style);
+
+                if (item is ToolStripMenuItem)
+                {
+                    item.Paint -= OnContextMenuItemPaint;
+                    item.Paint += OnContextMenuItemPaint;
+                }
             }
+        }
+
+        private static void OnContextMenuItemPaint(object sender, PaintEventArgs e)
+        {
+            var item = sender as ToolStripMenuItem;
+            if (item == null)
+                return;
+
+            var backColor = item.Selected ? ControlHoverBackColor : MenuBackColor;
+            using (var brush = new SolidBrush(backColor))
+            {
+                e.Graphics.FillRectangle(brush, new Rectangle(Point.Empty, item.Size));
+            }
+
+            var textColor = item.Enabled ? MenuTextColor : MenuSecondaryTextColor;
+            var textBounds = new Rectangle(12, 0, Math.Max(0, item.Width - 24), item.Height);
+            var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix;
+            TextRenderer.DrawText(e.Graphics, item.Text, item.Font ?? SystemFonts.MessageBoxFont, textBounds, textColor, flags);
         }
 
         public static void RegisterThemeChange(Form form, Action applyTheme)
@@ -355,8 +380,9 @@ namespace Tomighty.Windows.UI
 
             protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
             {
-                e.TextColor = e.Item.Enabled ? MenuTextColor : SecondaryTextColor;
-                base.OnRenderItemText(e);
+                var textColor = e.Item.Enabled ? MenuTextColor : MenuSecondaryTextColor;
+                var font = e.TextFont ?? e.Item.Font ?? SystemFonts.MessageBoxFont;
+                TextRenderer.DrawText(e.Graphics, e.Text, font, e.TextRectangle, textColor, e.TextFormat);
             }
 
             protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
@@ -385,6 +411,38 @@ namespace Tomighty.Windows.UI
             public override Color MenuItemSelected => ControlHoverBackColor;
             public override Color MenuItemSelectedGradientBegin => ControlHoverBackColor;
             public override Color MenuItemSelectedGradientEnd => ControlHoverBackColor;
+        }
+    }
+
+    internal class ThemedToolStripMenuItem : ToolStripMenuItem
+    {
+        private const int HorizontalTextPadding = 12;
+
+        public ThemedToolStripMenuItem()
+        {
+        }
+
+        public ThemedToolStripMenuItem(string text)
+            : base(text)
+        {
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var backColor = Selected ? ModernTheme.ControlHoverBackColor : ModernTheme.MenuBackColor;
+            using (var brush = new SolidBrush(backColor))
+            {
+                e.Graphics.FillRectangle(brush, new Rectangle(Point.Empty, Size));
+            }
+
+            var textColor = Enabled ? ModernTheme.MenuTextColor : ModernTheme.MenuSecondaryTextColor;
+            var textBounds = new Rectangle(
+                HorizontalTextPadding,
+                0,
+                Math.Max(0, Width - HorizontalTextPadding * 2),
+                Height);
+            var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix;
+            TextRenderer.DrawText(e.Graphics, Text, Font ?? SystemFonts.MessageBoxFont, textBounds, textColor, flags);
         }
     }
 }

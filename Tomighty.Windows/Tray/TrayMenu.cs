@@ -28,25 +28,25 @@ namespace Tomighty.Windows.Tray
 
         public TrayMenu()
         {
-            remainingTimeItem = new ToolStripMenuItem("00:00");
+            remainingTimeItem = new ThemedToolStripMenuItem("00:00");
             remainingTimeItem.Enabled = false;
             remainingTimeItem.Font = new Font(remainingTimeItem.Font, FontStyle.Bold);
 
-            stopTimerItem = new ToolStripMenuItem("Stop");
+            stopTimerItem = new ThemedToolStripMenuItem("Stop");
 
-            pomodoroCountItem = new ToolStripMenuItem();
+            pomodoroCountItem = new ThemedToolStripMenuItem();
             pomodoroCountItem.Enabled = false;
 
-            resetPomodoroCountItem = new ToolStripMenuItem("Reset count");
+            resetPomodoroCountItem = new ThemedToolStripMenuItem("Reset count");
             resetPomodoroCountItem.Enabled = false;
 
-            startPomodoroItem = new ToolStripMenuItem("Pomodoro");
-            startShortBreakItem = new ToolStripMenuItem("Short break");
-            startLongBreakItem = new ToolStripMenuItem("Long break");
+            startPomodoroItem = new ThemedToolStripMenuItem("Pomodoro");
+            startShortBreakItem = new ThemedToolStripMenuItem("Short break");
+            startLongBreakItem = new ThemedToolStripMenuItem("Long break");
 
-            aboutItem = new ToolStripMenuItem("About Tomighty");
-            preferencesItem = new ToolStripMenuItem("Preferences...");
-            exitItem = new ToolStripMenuItem("Exit");
+            aboutItem = new ThemedToolStripMenuItem("About Tomighty");
+            preferencesItem = new ThemedToolStripMenuItem("Preferences...");
+            exitItem = new ThemedToolStripMenuItem("Exit");
 
             contextMenu = new ContextMenuStrip();
             contextMenu.Items.Add(remainingTimeItem);
