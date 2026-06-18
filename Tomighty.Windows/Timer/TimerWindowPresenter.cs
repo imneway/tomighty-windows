@@ -7,6 +7,7 @@
 
 using System;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Tomighty.Events;
 using Tomighty.Windows.UI;
@@ -16,6 +17,7 @@ namespace Tomighty.Windows.Timer
     internal class TimerWindowPresenter
     {
         private const int TrayPopupGap = 8;
+        private static readonly TimeSpan CompletionAcknowledgementAutoHideDelay = TimeSpan.FromMilliseconds(400);
 
         private readonly ICountdownClock countdownClock;
         private readonly IWindowState idleState;
@@ -36,6 +38,7 @@ namespace Tomighty.Windows.Timer
         private bool hasLastTrayIconCenter;
         private Point lastTrayIconCenter;
         private DateTime lastDeactivateHideTime = DateTime.MinValue;
+        private DateTime completionAcknowledgedTime = DateTime.MinValue;
 
         public TimerWindowPresenter(IPomodoroEngine pomodoroEngine, ICountdownClock countdownClock, IEventHub eventHub)
         {
@@ -233,13 +236,13 @@ namespace Tomighty.Windows.Timer
 
         private void OnLostFocus(object sender, System.EventArgs e)
         {
-            if (CanAutoHideWindow && !window.ContainsFocus)
+            if (ShouldAutoHideWindow())
                 window.Hide();
         }
 
         private void OnWindowDeactivate(object sender, System.EventArgs e)
         {
-            if (CanAutoHideWindow)
+            if (ShouldAutoHideWindow())
             {
                 lastDeactivateHideTime = DateTime.UtcNow;
                 window.Hide();
@@ -248,14 +251,11 @@ namespace Tomighty.Windows.Timer
 
         private void HideIfFocusMovedOutside()
         {
-            if (window == null || !window.Visible || !CanAutoHideWindow)
+            if (!ShouldAutoHideWindow())
                 return;
 
-            if (!window.ContainsFocus && Form.ActiveForm != window)
-            {
-                lastDeactivateHideTime = DateTime.UtcNow;
-                window.Hide();
-            }
+            lastDeactivateHideTime = DateTime.UtcNow;
+            window.Hide();
         }
 
         private bool WasJustHiddenByDeactivation()
@@ -271,10 +271,56 @@ namespace Tomighty.Windows.Timer
 
         private bool CanAutoHideWindow => !IsPinned && !requiresManualClose;
 
+        private bool ShouldAutoHideWindow()
+        {
+            if (window == null || !window.Visible || !CanAutoHideWindow || WasCompletionJustAcknowledged())
+                return false;
+
+            return !WindowHasForegroundFocus();
+        }
+
+        private bool WasCompletionJustAcknowledged()
+        {
+            if (completionAcknowledgedTime == DateTime.MinValue)
+                return false;
+
+            return DateTime.UtcNow - completionAcknowledgedTime < CompletionAcknowledgementAutoHideDelay;
+        }
+
+        private bool WindowHasForegroundFocus()
+        {
+            if (window.ContainsFocus)
+                return true;
+
+            if (!window.IsHandleCreated)
+                return false;
+
+            var foregroundWindow = GetForegroundWindow();
+            if (foregroundWindow == IntPtr.Zero)
+                return false;
+
+            return foregroundWindow == window.Handle || IsChild(window.Handle, foregroundWindow);
+        }
+
         private void AcknowledgeCompletion()
         {
             requiresManualClose = false;
+            lastDeactivateHideTime = DateTime.MinValue;
+            completionAcknowledgedTime = DateTime.UtcNow;
+
+            if (window != null && window.Visible)
+            {
+                window.TopMost = false;
+                window.Activate();
+                window.Focus();
+            }
         }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern bool IsChild(IntPtr hWndParent, IntPtr hWnd);
 
         private void EnsureWindow()
         {

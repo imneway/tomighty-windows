@@ -42,16 +42,10 @@ namespace Tomighty.Windows.UI
         public static Color ControlHoverBackColor => IsLightTheme ? Color.FromArgb(229, 241, 251) : Color.FromArgb(62, 62, 62);
         public static Color ControlPressedBackColor => IsLightTheme ? Color.FromArgb(204, 228, 247) : Color.FromArgb(73, 73, 73);
         public static Color TextColor => IsLightTheme ? Color.FromArgb(PrimaryTextAlpha, 0, 0, 0) : Color.FromArgb(PrimaryTextAlpha, 255, 255, 255);
-        public static Color ControlTextColor => Blend(
-            IsLightTheme ? Color.Black : Color.White,
-            WindowBackColor,
-            PrimaryTextAlpha);
-        public static Color ControlSecondaryTextColor => Blend(
-            IsLightTheme ? Color.Black : Color.White,
-            WindowBackColor,
-            153);
+        public static Color ControlTextColor => IsLightTheme ? Color.Black : Color.White;
+        public static Color ControlSecondaryTextColor => IsLightTheme ? SystemColors.GrayText : Color.FromArgb(200, 200, 200);
         public static Color TimerTextColor => TextColor;
-        public static Color SecondaryTextColor => IsLightTheme ? SystemColors.GrayText : Color.FromArgb(200, 200, 200);
+        public static Color SecondaryTextColor => ControlSecondaryTextColor;
         public static Color BorderColor => IsLightTheme ? Color.FromArgb(138, 0, 0, 0) : Color.FromArgb(118, 255, 255, 255);
         public static Color InnerHighlightColor => IsLightTheme ? Color.FromArgb(120, 255, 255, 255) : Color.FromArgb(42, 255, 255, 255);
         public static Color ActionButtonBackColor => IsTimerWindowLightTheme ? TomatoRed : Color.FromArgb(69, 0, 0);
@@ -265,15 +259,6 @@ namespace Tomighty.Windows.UI
                 control.BackColor = WindowBackColor;
                 control.ForeColor = ControlTextColor;
             }
-        }
-
-        private static Color Blend(Color foreground, Color background, int alpha)
-        {
-            var inverseAlpha = 255 - alpha;
-            return Color.FromArgb(
-                (foreground.R * alpha + background.R * inverseAlpha) / 255,
-                (foreground.G * alpha + background.G * inverseAlpha) / 255,
-                (foreground.B * alpha + background.B * inverseAlpha) / 255);
         }
 
         private static void ApplyContextMenuColors(ContextMenuStrip menu)
