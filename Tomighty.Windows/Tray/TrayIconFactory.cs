@@ -17,7 +17,7 @@ namespace Tomighty.Windows.Tray
     internal static class TrayIconFactory
     {
         private const int NotifyIconSize = 32;
-        private const float CountdownCornerRadius = 4f;
+        private const float CountdownCornerRadius = 6f;
         private const float CountdownFontSize = 21f;
         private const float CountdownTextVerticalOffset = -1f;
         private static readonly Color MonochromeIconColor = Color.White;
