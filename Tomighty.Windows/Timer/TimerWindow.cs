@@ -36,12 +36,13 @@ namespace Tomighty.Windows.Timer
         private const int TimeTop = CompactPadding + TitleHeight + TimeVerticalMargin;
         private const int TimeHeight = 48;
         private const int MessageTitleHeight = 72;
-        private const int TitleOnlyTitleHeight = 24;
-        private const int TitleOnlyActionGap = 24;
+        private const int TitleOnlyHeaderGap = 12;
+        private const int TitleOnlyTitleHeight = 48;
+        private const int TitleOnlyActionGap = 20;
         private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
         private const int CompactHeight = CompactPadding + TitleHeight + TimeVerticalMargin + TimeHeight + TimeVerticalMargin + ActionButtonHeight + CompactPadding;
         private const int CompactMessageHeight = CompactPadding + MessageTitleHeight + ActionButtonHeight + CompactPadding;
-        private const int CompactTitleOnlyHeight = CompactPadding + TitleOnlyTitleHeight + TitleOnlyActionGap + ActionButtonHeight + CompactPadding;
+        private const int CompactTitleOnlyHeight = CompactPadding + TitleHeight + TitleOnlyHeaderGap + TitleOnlyTitleHeight + TitleOnlyActionGap + ActionButtonHeight + CompactPadding;
         private const int WindowCornerRadius = 20;
         private const int ActionButtonCornerRadius = 8;
         private const int ActionButtonHoverColorOffset = 12;
@@ -435,16 +436,7 @@ namespace Tomighty.Windows.Timer
             }
             else
             {
-                using (var titleOnlyFont = ModernTheme.TextFont(13f))
-                {
-                    var titleBounds = GetTitleOnlyTitleBounds();
-                    var measuredTitleWidth = e.Graphics.MeasureString(titleText, titleOnlyFont).Width;
-                    var reservedWidth = ScaleLayout(DropDownSize) + ScaleLayout(CompactPadding / 2);
-                    if (measuredTitleWidth > titleBounds.Width - reservedWidth)
-                        titleBounds = GetTitleOnlyTitleBounds(true);
-
-                    DrawAlignedText(e.Graphics, titleText, titleOnlyFont, titleBounds, StringAlignment.Center, StringAlignment.Center);
-                }
+                DrawTitleOnlyText(e.Graphics);
             }
 
             DrawDropDownArrow(e.Graphics, GetDropDownBounds());
@@ -468,6 +460,36 @@ namespace Tomighty.Windows.Timer
             }
         }
 
+        private void DrawTitleOnlyText(Graphics graphics)
+        {
+            var bounds = GetTitleOnlyTitleBounds();
+
+            using (var font = CreateTitleOnlyFont(graphics, bounds, out var noWrap))
+            {
+                DrawAlignedText(graphics, titleText, font, bounds, StringAlignment.Center, StringAlignment.Center, noWrap);
+            }
+        }
+
+        private Font CreateTitleOnlyFont(Graphics graphics, Rectangle bounds, out bool noWrap)
+        {
+            var size = 18f;
+            while (size >= 14f)
+            {
+                var font = ModernTheme.TextFont(size);
+                if (graphics.MeasureString(titleText, font).Width <= bounds.Width)
+                {
+                    noWrap = true;
+                    return font;
+                }
+
+                font.Dispose();
+                size -= 1f;
+            }
+
+            noWrap = false;
+            return ModernTheme.TextFont(16f);
+        }
+
         private Rectangle GetDropDownBounds()
         {
             var padding = ScaleLayout(CompactPadding);
@@ -488,8 +510,8 @@ namespace Tomighty.Windows.Timer
         private Rectangle GetTitleOnlyTitleBounds(bool reserveDropDown)
         {
             var padding = ScaleLayout(CompactPadding);
-            var reservedDropDownWidth = reserveDropDown ? ScaleLayout(DropDownSize) : 0;
-            return new Rectangle(padding, padding, ClientSize.Width - padding * 2 - reservedDropDownWidth, ScaleLayout(TitleOnlyTitleHeight));
+            var top = padding + ScaleLayout(TitleHeight + TitleOnlyHeaderGap);
+            return new Rectangle(padding, top, ClientSize.Width - padding * 2, ScaleLayout(TitleOnlyTitleHeight));
         }
 
         private Rectangle GetMessageTitleBounds()
@@ -731,7 +753,12 @@ namespace Tomighty.Windows.Timer
 
         private void RefreshDpiLayout()
         {
-            layoutScale = GetCurrentDpiScale();
+            ApplyDpiLayoutScale(GetCurrentDpiScale());
+        }
+
+        private void ApplyDpiLayoutScale(float dpiScale)
+        {
+            layoutScale = Math.Max(1f, dpiScale);
             ApplyCompactFonts();
             ApplyCompactWindowSize();
             UpdateWindowRegion();
@@ -885,10 +912,19 @@ namespace Tomighty.Windows.Timer
 
         protected override void WndProc(ref Message m)
         {
-            base.WndProc(ref m);
-
             if (m.Msg == WM_DPICHANGED)
-                RefreshDpiLayout();
+            {
+                base.WndProc(ref m);
+                ApplyDpiLayoutScale(GetDpiScaleFromWParam(m.WParam));
+                return;
+            }
+
+            base.WndProc(ref m);
+        }
+
+        private static float GetDpiScaleFromWParam(IntPtr wParam)
+        {
+            return Math.Max(1f, ((int)wParam & 0xFFFF) / 96f);
         }
 
         private class DropDownButton : Button

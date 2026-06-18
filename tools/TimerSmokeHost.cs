@@ -393,14 +393,15 @@ namespace Tomighty.Tools
                 PumpUi();
 
                 var layoutScale = GetPrivateField<float>(window, "layoutScale");
-                var expectedHeight = (int)Math.Round((8 + 24 + 24 + 32 + 8) * layoutScale);
+                var expectedHeight = (int)Math.Round((8 + 20 + 12 + 48 + 20 + 32 + 8) * layoutScale);
                 AssertEqual("titleOnlyClientHeight", expectedHeight, window.ClientSize.Height);
                 AssertTimerTypography(window);
 
                 var titleBounds = InvokeRectangleMethod(window, "GetTitleOnlyTitleBounds");
                 var actionBounds = InvokeRectangleMethod(window, "GetPrimaryActionButtonBounds");
-                AssertEqual("titleOnlyTitleTop", (int)Math.Round(8 * layoutScale), titleBounds.Top);
-                AssertEqual("titleOnlyActionGap", (int)Math.Round(24 * layoutScale), actionBounds.Top - titleBounds.Bottom);
+                AssertEqual("titleOnlyTitleTop", (int)Math.Round((8 + 20 + 12) * layoutScale), titleBounds.Top);
+                AssertEqual("titleOnlyTitleHeight", (int)Math.Round(48 * layoutScale), titleBounds.Height);
+                AssertEqual("titleOnlyActionGap", (int)Math.Round(20 * layoutScale), actionBounds.Top - titleBounds.Bottom);
                 AssertEqual("titleOnlyActionWidth", (int)Math.Round(160 * layoutScale), actionBounds.Width);
                 AssertEqual("titleOnlyActionHeight", (int)Math.Round(32 * layoutScale), actionBounds.Height);
 
@@ -432,10 +433,17 @@ namespace Tomighty.Tools
                     timerButton.Font = (Font)oversizedFont.Clone();
                 }
 
-                InvokeRefreshDpiLayout(window);
+                InvokeApplyDpiLayoutScale(window, 2f);
                 PumpUi();
 
                 AssertTimerTypography(window);
+                AssertTimerLayout(window, 2f);
+
+                InvokeApplyDpiLayoutScale(window, 1f);
+                PumpUi();
+
+                AssertTimerTypography(window);
+                AssertTimerLayout(window, 1f);
                 window.Close();
             }
         }
@@ -454,6 +462,13 @@ namespace Tomighty.Tools
                 .Invoke(window, new object[0]);
         }
 
+        private static void InvokeApplyDpiLayoutScale(TimerWindow window, float scale)
+        {
+            typeof(TimerWindow)
+                .GetMethod("ApplyDpiLayoutScale", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[] { scale });
+        }
+
         private static void AssertTimerTypography(TimerWindow window)
         {
             var titleLabel = GetPrivateField<Control>(window, "titleLabel");
@@ -463,6 +478,24 @@ namespace Tomighty.Tools
             AssertNear("titleFontSize", 9.5f, titleLabel.Font.SizeInPoints, 0.1f);
             AssertNear("timeFontSize", 36f, timeLabel.Font.SizeInPoints, 0.1f);
             AssertNear("timerButtonFontSize", 9.5f, timerButton.Font.SizeInPoints, 0.1f);
+        }
+
+        private static void AssertTimerLayout(TimerWindow window, float expectedScale)
+        {
+            var layoutScale = GetPrivateField<float>(window, "layoutScale");
+            AssertNear("timerLayoutScale", expectedScale, layoutScale, 0.01f);
+
+            AssertEqual("timerClientWidth", (int)Math.Round(176 * expectedScale), window.ClientSize.Width);
+            AssertEqual("timerClientHeight", (int)Math.Round((8 + 20 + 14 + 48 + 14 + 32 + 8) * expectedScale), window.ClientSize.Height);
+
+            var titleBounds = InvokeRectangleMethod(window, "GetTitleBounds");
+            var timeBounds = InvokeRectangleMethod(window, "GetTimeBounds");
+            var actionBounds = InvokeRectangleMethod(window, "GetPrimaryActionButtonBounds");
+            AssertEqual("timerTitleTop", (int)Math.Round(8 * expectedScale), titleBounds.Top);
+            AssertEqual("timerTimeTop", (int)Math.Round((8 + 20 + 14) * expectedScale), timeBounds.Top);
+            AssertEqual("timerTimeHeight", (int)Math.Round(48 * expectedScale), timeBounds.Height);
+            AssertEqual("timerTimeActionGap", (int)Math.Round(14 * expectedScale), actionBounds.Top - timeBounds.Bottom);
+            AssertEqual("timerActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
         }
 
         private static void AssertHorizontalActionButtons(TimerWindow window)
