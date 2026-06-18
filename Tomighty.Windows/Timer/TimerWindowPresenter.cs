@@ -20,6 +20,8 @@ namespace Tomighty.Windows.Timer
         private static readonly TimeSpan CompletionAcknowledgementAutoHideDelay = TimeSpan.FromMilliseconds(400);
 
         private readonly ICountdownClock countdownClock;
+        private readonly IUserPreferences userPreferences;
+        private readonly IFullscreenWindowDetector fullscreenWindowDetector;
         private readonly IWindowState idleState;
         private readonly IWindowState pomodoroState;
         private readonly IWindowState shortBreakState;
@@ -39,10 +41,23 @@ namespace Tomighty.Windows.Timer
         private Point lastTrayIconCenter;
         private DateTime lastDeactivateHideTime = DateTime.MinValue;
         private DateTime completionAcknowledgedTime = DateTime.MinValue;
+        private bool completionAlertPending;
 
-        public TimerWindowPresenter(IPomodoroEngine pomodoroEngine, ICountdownClock countdownClock, IEventHub eventHub)
+        public TimerWindowPresenter(IPomodoroEngine pomodoroEngine, ICountdownClock countdownClock, IEventHub eventHub, IUserPreferences userPreferences)
+            : this(pomodoroEngine, countdownClock, eventHub, userPreferences, new ForegroundFullscreenWindowDetector())
+        {
+        }
+
+        internal TimerWindowPresenter(
+            IPomodoroEngine pomodoroEngine,
+            ICountdownClock countdownClock,
+            IEventHub eventHub,
+            IUserPreferences userPreferences,
+            IFullscreenWindowDetector fullscreenWindowDetector)
         {
             this.countdownClock = countdownClock;
+            this.userPreferences = userPreferences;
+            this.fullscreenWindowDetector = fullscreenWindowDetector;
 
             idleState = new IdleState(pomodoroEngine);
             pomodoroState = new PomodoroState(pomodoroEngine);
@@ -64,7 +79,11 @@ namespace Tomighty.Windows.Timer
             eventHub.Subscribe<TimerStopped>(OnTimerStopped);
 
             autoHideTimer = new System.Windows.Forms.Timer { Interval = 150 };
-            autoHideTimer.Tick += (sender, args) => HideIfFocusMovedOutside();
+            autoHideTimer.Tick += (sender, args) =>
+            {
+                HideIfFocusMovedOutside();
+                ShowPendingCompletionAlertIfAllowed();
+            };
             autoHideTimer.Start();
         }
 
@@ -305,6 +324,7 @@ namespace Tomighty.Windows.Timer
         private void AcknowledgeCompletion()
         {
             requiresManualClose = false;
+            completionAlertPending = false;
             lastDeactivateHideTime = DateTime.MinValue;
             completionAcknowledgedTime = DateTime.UtcNow;
 
@@ -348,11 +368,54 @@ namespace Tomighty.Windows.Timer
 
         private void ShowCompletionAlert()
         {
+            if (ShouldSuppressCompletionAlert())
+            {
+                completionAlertPending = true;
+                window.Hide();
+                return;
+            }
+
+            completionAlertPending = false;
+            ShowCompletionAlertNow();
+        }
+
+        private void ShowPendingCompletionAlertIfAllowed()
+        {
+            if (!completionAlertPending || window == null || window.Visible || ShouldSuppressCompletionAlert())
+                return;
+
+            completionAlertPending = false;
+            ShowCompletionAlertNow();
+        }
+
+        private void ShowCompletionAlertNow()
+        {
             var location = window.Visible
                 ? window.Location
                 : GetCompletionAlertLocation();
 
             window.Show(location);
+        }
+
+        private bool ShouldSuppressCompletionAlert()
+        {
+            if (!userPreferences.SuppressPopupInFullscreenApps)
+                return false;
+
+            var screen = Screen.FromPoint(GetCompletionAlertScreenPoint());
+            var ignoredWindowHandle = window != null && window.IsHandleCreated ? window.Handle : IntPtr.Zero;
+            return fullscreenWindowDetector.IsFullscreenWindowActiveOn(screen, ignoredWindowHandle);
+        }
+
+        private Point GetCompletionAlertScreenPoint()
+        {
+            if (window != null && window.Visible)
+                return new Point(window.Left + window.Width / 2, window.Top + window.Height / 2);
+
+            if (hasLastTrayIconCenter)
+                return lastTrayIconCenter;
+
+            return Cursor.Position;
         }
 
         private Point GetCompletionAlertLocation()

@@ -27,6 +27,7 @@ namespace Tomighty.Windows.Preferences
             toastNotification.Checked = userPreferences.ShowToastNotifications;
             soundNotifications.Checked = userPreferences.PlaySoundNotifications;
             showRemainingTimeOnTray.Checked = userPreferences.ShowRemainingTimeOnTray;
+            suppressPopupInFullscreenApps.Checked = userPreferences.SuppressPopupInFullscreenApps;
             autoupdate.Checked = userPreferences.AutoUpdate;
             startWithWindows.Checked = StartupRegistration.IsEnabled;
 
@@ -50,6 +51,7 @@ namespace Tomighty.Windows.Preferences
                 newPreferences.ShowToastNotifications = toastNotification.Checked;
                 newPreferences.PlaySoundNotifications = soundNotifications.Checked;
                 newPreferences.ShowRemainingTimeOnTray = showRemainingTimeOnTray.Checked;
+                newPreferences.SuppressPopupInFullscreenApps = suppressPopupInFullscreenApps.Checked;
                 newPreferences.AutoUpdate = autoupdate.Checked;
             });
             StartupRegistration.SetEnabled(startWithWindows.Checked);

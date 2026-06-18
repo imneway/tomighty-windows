@@ -59,6 +59,7 @@ namespace Tomighty.Windows.Preferences
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.startWithWindows = new System.Windows.Forms.CheckBox();
             this.showRemainingTimeOnTray = new System.Windows.Forms.CheckBox();
+            this.suppressPopupInFullscreenApps = new System.Windows.Forms.CheckBox();
             this.autoupdate = new System.Windows.Forms.CheckBox();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.longBreakDurationTextBox)).BeginInit();
@@ -350,10 +351,11 @@ namespace Tomighty.Windows.Preferences
             this.label8.Size = new System.Drawing.Size(120, 13);
             this.label8.TabIndex = 0;
             this.label8.Text = "When the timer finishes:";
-            // 
+            //
             // tabPage3
             //
             this.tabPage3.Controls.Add(this.startWithWindows);
+            this.tabPage3.Controls.Add(this.suppressPopupInFullscreenApps);
             this.tabPage3.Controls.Add(this.autoupdate);
             this.tabPage3.Controls.Add(this.showRemainingTimeOnTray);
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
@@ -383,14 +385,24 @@ namespace Tomighty.Windows.Preferences
             this.showRemainingTimeOnTray.TabIndex = 1;
             this.showRemainingTimeOnTray.Text = "Show remaining time on tray";
             this.showRemainingTimeOnTray.UseVisualStyleBackColor = true;
+            //
+            // suppressPopupInFullscreenApps
+            //
+            this.suppressPopupInFullscreenApps.AutoSize = true;
+            this.suppressPopupInFullscreenApps.Location = new System.Drawing.Point(14, 60);
+            this.suppressPopupInFullscreenApps.Name = "suppressPopupInFullscreenApps";
+            this.suppressPopupInFullscreenApps.Size = new System.Drawing.Size(257, 17);
+            this.suppressPopupInFullscreenApps.TabIndex = 2;
+            this.suppressPopupInFullscreenApps.Text = "Hide timer popup while fullscreen apps are active";
+            this.suppressPopupInFullscreenApps.UseVisualStyleBackColor = true;
             // 
             // autoupdate
             // 
             this.autoupdate.AutoSize = true;
-            this.autoupdate.Location = new System.Drawing.Point(14, 60);
+            this.autoupdate.Location = new System.Drawing.Point(14, 83);
             this.autoupdate.Name = "autoupdate";
             this.autoupdate.Size = new System.Drawing.Size(228, 17);
-            this.autoupdate.TabIndex = 2;
+            this.autoupdate.TabIndex = 3;
             this.autoupdate.Text = "Automatically download and install updates";
             this.autoupdate.UseVisualStyleBackColor = true;
             // 
@@ -454,6 +466,7 @@ namespace Tomighty.Windows.Preferences
         private System.Windows.Forms.TabPage tabPage3;
         private System.Windows.Forms.CheckBox startWithWindows;
         private System.Windows.Forms.CheckBox showRemainingTimeOnTray;
+        private System.Windows.Forms.CheckBox suppressPopupInFullscreenApps;
         private System.Windows.Forms.CheckBox autoupdate;
     }
 }

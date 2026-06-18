@@ -60,6 +60,7 @@ namespace Tomighty.Windows.Preferences
             ShowToastNotifications = true,
             PlaySoundNotifications = true,
             ShowRemainingTimeOnTray = true,
+            SuppressPopupInFullscreenApps = true,
             AutoUpdate = true
         };
 
@@ -102,6 +103,12 @@ namespace Tomighty.Windows.Preferences
             get { return values.ShowRemainingTimeOnTray ?? DefaultValues.ShowRemainingTimeOnTray.GetValueOrDefault(); }
             set { values.ShowRemainingTimeOnTray = value; }
         }
+
+        public bool SuppressPopupInFullscreenApps
+        {
+            get { return values.SuppressPopupInFullscreenApps ?? DefaultValues.SuppressPopupInFullscreenApps.GetValueOrDefault(); }
+            set { values.SuppressPopupInFullscreenApps = value; }
+        }
         
         public bool AutoUpdate
         {
@@ -128,6 +135,7 @@ namespace Tomighty.Windows.Preferences
             [DataMember] public bool ShowToastNotifications { get; set; }
             [DataMember] public bool PlaySoundNotifications { get; set; }
             [DataMember] public bool? ShowRemainingTimeOnTray { get; set; }
+            [DataMember] public bool? SuppressPopupInFullscreenApps { get; set; }
             [DataMember] public bool AutoUpdate { get; set; }
         }
     }

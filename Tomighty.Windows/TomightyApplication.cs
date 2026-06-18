@@ -30,7 +30,7 @@ namespace Tomighty.Windows
             trayIcon.Icon = initialTrayIcon;
             trayIcon.Visible = true;
 
-            var timerWindowPresenter = new TimerWindowPresenter(pomodoroEngine, timer, eventHub);
+            var timerWindowPresenter = new TimerWindowPresenter(pomodoroEngine, timer, eventHub, userPreferences);
             var trayIconController = new TrayIconController(trayIcon, timerWindowPresenter, userPreferences, eventHub);
             initialTrayIcon.Dispose();
 

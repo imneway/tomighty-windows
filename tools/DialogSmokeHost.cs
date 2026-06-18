@@ -95,6 +95,7 @@ namespace Tomighty.Tools
             public bool ShowToastNotifications { get; set; } = true;
             public bool PlaySoundNotifications { get; set; } = true;
             public bool ShowRemainingTimeOnTray { get; set; } = true;
+            public bool SuppressPopupInFullscreenApps { get; set; } = true;
             public bool AutoUpdate { get; set; } = true;
 
             public Duration GetIntervalDuration(IntervalType intervalType)

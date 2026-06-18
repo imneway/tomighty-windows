@@ -61,6 +61,7 @@ namespace Tomighty.Tools
                 AssertDpiRefreshResetsTimerFonts(backdrop);
                 AssertDpiRefreshResetsTitleOnlyLayout(backdrop);
                 AssertAllStatesSurviveDpiRoundTrip(backdrop);
+                AssertCompletionAlertWaitsForFullscreenExit(backdrop);
                 SetThemeOverride(null);
                 backdrop.Close();
             }
@@ -141,7 +142,7 @@ namespace Tomighty.Tools
             var timer = new Tomighty.Timer(eventHub);
             var preferences = new SmokeUserPreferences();
             var engine = new PomodoroEngine(timer, preferences, eventHub);
-            var presenter = CreateTimerWindowPresenter(engine, timer, eventHub);
+            var presenter = CreateTimerWindowPresenter(engine, timer, eventHub, preferences);
             var images = new List<Bitmap>();
 
             try
@@ -210,14 +211,19 @@ namespace Tomighty.Tools
             }
         }
 
-        private static object CreateTimerWindowPresenter(IPomodoroEngine engine, ICountdownClock countdownClock, IEventHub eventHub)
+        private static object CreateTimerWindowPresenter(IPomodoroEngine engine, ICountdownClock countdownClock, IEventHub eventHub, IUserPreferences preferences)
+        {
+            return CreateTimerWindowPresenter(engine, countdownClock, eventHub, preferences, new WindowedDetector());
+        }
+
+        private static object CreateTimerWindowPresenter(IPomodoroEngine engine, ICountdownClock countdownClock, IEventHub eventHub, IUserPreferences preferences, IFullscreenWindowDetector fullscreenWindowDetector)
         {
             var presenterType = typeof(TimerWindow).Assembly.GetType("Tomighty.Windows.Timer.TimerWindowPresenter", true);
             return Activator.CreateInstance(
                 presenterType,
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 null,
-                new object[] { engine, countdownClock, eventHub },
+                new object[] { engine, countdownClock, eventHub, preferences, fullscreenWindowDetector },
                 null);
         }
 
@@ -383,6 +389,64 @@ namespace Tomighty.Tools
                     }
                 }
             }
+        }
+
+        private static void AssertCompletionAlertWaitsForFullscreenExit(IWin32Window owner)
+        {
+            SetThemeOverride(true);
+
+            var eventHub = new SynchronousEventHub();
+            var timer = new Tomighty.Timer(eventHub);
+            var preferences = new SmokeUserPreferences { SuppressPopupInFullscreenApps = true };
+            var engine = new PomodoroEngine(timer, preferences, eventHub);
+            var fullscreenDetector = new ToggleFullscreenDetector { IsFullscreen = true };
+            var presenter = CreateTimerWindowPresenter(engine, timer, eventHub, preferences, fullscreenDetector);
+            var window = GetPresenterWindow(presenter);
+
+            eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
+            PumpUi();
+
+            if (window.Visible)
+                throw new InvalidOperationException("Completion alert was shown while a fullscreen window was active.");
+
+            fullscreenDetector.IsFullscreen = false;
+            PumpUi();
+
+            if (!window.Visible)
+                throw new InvalidOperationException("Completion alert did not appear after the fullscreen window exited.");
+
+            AssertTimerWindowState(
+                window,
+                "Pomodoro finished",
+                false,
+                "Short",
+                BreakActionButtonBackColor,
+                "Long",
+                NeutralActionButtonBackColor,
+                "Take a break");
+
+            window.Close();
+
+            AssertCompletionAlertIgnoresFullscreenWhenPreferenceIsOff();
+        }
+
+        private static void AssertCompletionAlertIgnoresFullscreenWhenPreferenceIsOff()
+        {
+            var eventHub = new SynchronousEventHub();
+            var timer = new Tomighty.Timer(eventHub);
+            var preferences = new SmokeUserPreferences { SuppressPopupInFullscreenApps = false };
+            var engine = new PomodoroEngine(timer, preferences, eventHub);
+            var fullscreenDetector = new ToggleFullscreenDetector { IsFullscreen = true };
+            var presenter = CreateTimerWindowPresenter(engine, timer, eventHub, preferences, fullscreenDetector);
+            var window = GetPresenterWindow(presenter);
+
+            eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
+            PumpUi();
+
+            if (!window.Visible)
+                throw new InvalidOperationException("Completion alert was suppressed even though the fullscreen preference is off.");
+
+            window.Close();
         }
 
         private static void AssertStateAtDpiScale(TimerWindow window, TimerStateShot shot, float scale)
@@ -820,11 +884,30 @@ namespace Tomighty.Tools
             public bool ShowToastNotifications => false;
             public bool PlaySoundNotifications => false;
             public bool ShowRemainingTimeOnTray => true;
+            public bool SuppressPopupInFullscreenApps { get; set; } = true;
             public bool AutoUpdate => false;
 
             public void Update(Action<IMutableUserPreferences> action)
             {
                 throw new NotSupportedException();
+            }
+        }
+
+        private sealed class WindowedDetector : IFullscreenWindowDetector
+        {
+            public bool IsFullscreenWindowActiveOn(Screen screen, IntPtr ignoredWindowHandle)
+            {
+                return false;
+            }
+        }
+
+        private sealed class ToggleFullscreenDetector : IFullscreenWindowDetector
+        {
+            public bool IsFullscreen { get; set; }
+
+            public bool IsFullscreenWindowActiveOn(Screen screen, IntPtr ignoredWindowHandle)
+            {
+                return IsFullscreen;
             }
         }
 

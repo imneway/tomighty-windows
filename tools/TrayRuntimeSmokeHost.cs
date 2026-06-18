@@ -40,7 +40,7 @@ namespace Tomighty.Tools
             {
                 notifyIcon.Text = "Tomighty runtime smoke";
 
-                var presenter = CreateTimerWindowPresenter(engine, timer, eventHub);
+                var presenter = CreateTimerWindowPresenter(engine, timer, eventHub, preferences);
                 var trayIconController = CreateTrayIconController(notifyIcon, presenter, preferences, eventHub);
                 try
                 {
@@ -65,14 +65,14 @@ namespace Tomighty.Tools
             return 0;
         }
 
-        private static object CreateTimerWindowPresenter(IPomodoroEngine engine, ICountdownClock countdownClock, IEventHub eventHub)
+        private static object CreateTimerWindowPresenter(IPomodoroEngine engine, ICountdownClock countdownClock, IEventHub eventHub, IUserPreferences preferences)
         {
             var presenterType = typeof(TimerWindow).Assembly.GetType("Tomighty.Windows.Timer.TimerWindowPresenter", true);
             return Activator.CreateInstance(
                 presenterType,
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 null,
-                new object[] { engine, countdownClock, eventHub },
+                new object[] { engine, countdownClock, eventHub, preferences },
                 null);
         }
 
@@ -265,6 +265,7 @@ namespace Tomighty.Tools
             public bool ShowToastNotifications => false;
             public bool PlaySoundNotifications => false;
             public bool ShowRemainingTimeOnTray => true;
+            public bool SuppressPopupInFullscreenApps => true;
             public bool AutoUpdate => false;
 
             public void Update(Action<IMutableUserPreferences> action)

@@ -117,6 +117,8 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Timer\ForegroundFullscreenWindowDetector.cs" />
+    <Compile Include="Timer\IFullscreenWindowDetector.cs" />
     <Compile Include="Timer\Taskbar.cs" />
     <Compile Include="Timer\TimerWindow.cs">
       <SubType>Form</SubType>

@@ -20,6 +20,7 @@ namespace Tomighty.Tools
                     values.ShowToastNotifications = false;
                     values.PlaySoundNotifications = false;
                     values.ShowRemainingTimeOnTray = true;
+                    values.SuppressPopupInFullscreenApps = true;
                     values.AutoUpdate = false;
                 });
             }
@@ -28,6 +29,7 @@ namespace Tomighty.Tools
             Console.WriteLine(preferences.ShowToastNotifications);
             Console.WriteLine(preferences.PlaySoundNotifications);
             Console.WriteLine(preferences.ShowRemainingTimeOnTray);
+            Console.WriteLine(preferences.SuppressPopupInFullscreenApps);
             return 0;
         }
     }
