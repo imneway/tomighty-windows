@@ -24,6 +24,7 @@ namespace Tomighty.Windows.Timer
         public static readonly Color Blue = Color.FromArgb(22, 57, 101);
 
         private const int WM_NCLBUTTONDOWN = 0x00A1;
+        private const int WM_DPICHANGED = 0x02E0;
         private const int HTCAPTION = 0x0002;
         private const int CompactPadding = 8;
         private const int ActionButtonWidth = 180;
@@ -35,9 +36,11 @@ namespace Tomighty.Windows.Timer
         private const int TimeTop = CompactPadding + TitleHeight + TimeVerticalMargin;
         private const int TimeHeight = 48;
         private const int MessageTitleHeight = 72;
+        private const int TitleOnlyActionGap = 16;
         private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
         private const int CompactHeight = CompactPadding + TitleHeight + TimeVerticalMargin + TimeHeight + TimeVerticalMargin + ActionButtonHeight + CompactPadding;
         private const int CompactMessageHeight = CompactPadding + MessageTitleHeight + ActionButtonHeight + CompactPadding;
+        private const int CompactTitleOnlyHeight = CompactPadding + TitleHeight + TitleOnlyActionGap + ActionButtonHeight + CompactPadding;
         private const int WindowCornerRadius = 20;
         private const int ActionButtonCornerRadius = 8;
         private const int ActionButtonHoverColorOffset = 12;
@@ -215,11 +218,7 @@ namespace Tomighty.Windows.Timer
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            layoutScale = GetCurrentDpiScale();
-            ApplyCompactFonts();
-            ApplyCompactWindowSize();
-            UpdateWindowRegion();
-            UpdateCompactBounds();
+            RefreshDpiLayout();
         }
 
         protected override void OnClientSizeChanged(EventArgs e)
@@ -435,10 +434,7 @@ namespace Tomighty.Windows.Timer
             }
             else
             {
-                using (var messageFont = ModernTheme.TextFont(13f))
-                {
-                    DrawAlignedText(e.Graphics, titleText, messageFont, GetMessageTitleBounds(), StringAlignment.Center, StringAlignment.Center, false);
-                }
+                DrawAlignedText(e.Graphics, titleText, titleLabel.Font, GetTitleBounds(), StringAlignment.Center, StringAlignment.Center);
             }
 
             DrawDropDownArrow(e.Graphics, GetDropDownBounds());
@@ -528,7 +524,7 @@ namespace Tomighty.Windows.Timer
             if (timeDisplayVisible)
                 return CompactHeight;
 
-            return CompactMessageHeight;
+            return HasMessage ? CompactMessageHeight : CompactTitleOnlyHeight;
         }
 
         private int ScaleLayout(int value)
@@ -711,6 +707,18 @@ namespace Tomighty.Windows.Timer
             }
         }
 
+        private void RefreshDpiLayout()
+        {
+            layoutScale = GetCurrentDpiScale();
+            ApplyCompactFonts();
+            ApplyCompactWindowSize();
+            UpdateWindowRegion();
+            UpdateCompactBounds();
+            closeButton.Invalidate();
+            timerButton.Invalidate();
+            Invalidate();
+        }
+
         private void DrawDropDownArrow(Graphics graphics, Rectangle bounds)
         {
             var scale = graphics.DpiX / 96f;
@@ -851,6 +859,14 @@ namespace Tomighty.Windows.Timer
             closeButton.Invalidate();
             timerButton.Invalidate();
             Invalidate();
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+
+            if (m.Msg == WM_DPICHANGED)
+                RefreshDpiLayout();
         }
 
         private class DropDownButton : Button

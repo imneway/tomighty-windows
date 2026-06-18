@@ -57,6 +57,8 @@ namespace Tomighty.Tools
                     "timer-window-driven-dark.png",
                     backdrop);
                 AssertThemeSwitchUpdatesTimerWindow(backdrop);
+                AssertTitleOnlyStateIsCompact(backdrop);
+                AssertDpiRefreshResetsTimerFonts(backdrop);
                 SetThemeOverride(null);
                 backdrop.Close();
             }
@@ -372,10 +374,81 @@ namespace Tomighty.Tools
             }
         }
 
+        private static void AssertTitleOnlyStateIsCompact(IWin32Window owner)
+        {
+            SetThemeOverride(true);
+
+            using (var window = new TimerWindow())
+            {
+                window.UpdateTitle("Break Finished");
+                window.HideTimeDisplay();
+                window.SetTimerAction("Start Pomodoro", () => { }, ActionButtonBackColor);
+                window.StartPosition = FormStartPosition.Manual;
+
+                if (!window.IsHandleCreated && window.Handle == IntPtr.Zero)
+                    throw new InvalidOperationException("TimerWindow handle was not created.");
+
+                window.Location = new Point(120, 120);
+                window.Show(owner);
+                PumpUi();
+
+                var layoutScale = GetPrivateField<float>(window, "layoutScale");
+                var expectedHeight = (int)Math.Round((8 + 20 + 16 + 36 + 8) * layoutScale);
+                AssertEqual("titleOnlyClientHeight", expectedHeight, window.ClientSize.Height);
+                AssertTimerTypography(window);
+
+                var titleBounds = InvokeRectangleMethod(window, "GetTitleBounds");
+                var actionBounds = InvokeRectangleMethod(window, "GetPrimaryActionButtonBounds");
+                AssertEqual("titleOnlyTitleTop", (int)Math.Round(8 * layoutScale), titleBounds.Top);
+                AssertEqual("titleOnlyActionGap", (int)Math.Round(16 * layoutScale), actionBounds.Top - titleBounds.Bottom);
+
+                window.Close();
+            }
+        }
+
+        private static void AssertDpiRefreshResetsTimerFonts(IWin32Window owner)
+        {
+            SetThemeOverride(true);
+
+            using (var window = new TimerWindow())
+            {
+                window.UpdateTitle("Pomodoro");
+                window.UpdateTimeDisplay("25:00");
+                window.SetTimerAction("Interrupt", () => { }, ActionButtonBackColor);
+                window.StartPosition = FormStartPosition.Manual;
+
+                if (!window.IsHandleCreated && window.Handle == IntPtr.Zero)
+                    throw new InvalidOperationException("TimerWindow handle was not created.");
+
+                window.Location = new Point(120, 120);
+                window.Show(owner);
+                PumpUi();
+
+                var timerButton = GetPrivateField<Control>(window, "timerButton");
+                using (var oversizedFont = new Font(timerButton.Font.FontFamily, 15f, timerButton.Font.Style, GraphicsUnit.Point))
+                {
+                    timerButton.Font = (Font)oversizedFont.Clone();
+                }
+
+                InvokeRefreshDpiLayout(window);
+                PumpUi();
+
+                AssertTimerTypography(window);
+                window.Close();
+            }
+        }
+
         private static void InvokeApplyTheme(TimerWindow window)
         {
             typeof(TimerWindow)
                 .GetMethod("ApplyTheme", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[0]);
+        }
+
+        private static void InvokeRefreshDpiLayout(TimerWindow window)
+        {
+            typeof(TimerWindow)
+                .GetMethod("RefreshDpiLayout", BindingFlags.Instance | BindingFlags.NonPublic)
                 .Invoke(window, new object[0]);
         }
 
@@ -392,17 +465,20 @@ namespace Tomighty.Tools
 
         private static void AssertHorizontalActionButtons(TimerWindow window)
         {
-            var primaryBounds = (Rectangle)typeof(TimerWindow)
-                .GetMethod("GetPrimaryActionButtonBounds", BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(window, new object[0]);
-            var secondaryBounds = (Rectangle)typeof(TimerWindow)
-                .GetMethod("GetSecondaryActionButtonBounds", BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(window, new object[0]);
+            var primaryBounds = InvokeRectangleMethod(window, "GetPrimaryActionButtonBounds");
+            var secondaryBounds = InvokeRectangleMethod(window, "GetSecondaryActionButtonBounds");
             var layoutScale = GetPrivateField<float>(window, "layoutScale");
             var expectedGap = (int)Math.Round(4f * layoutScale);
 
             AssertEqual("secondaryActionY", primaryBounds.Top, secondaryBounds.Top);
             AssertEqual("actionButtonGap", expectedGap, secondaryBounds.Left - primaryBounds.Right);
+        }
+
+        private static Rectangle InvokeRectangleMethod(TimerWindow window, string methodName)
+        {
+            return (Rectangle)typeof(TimerWindow)
+                .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[0]);
         }
 
         private static T GetPrivateField<T>(object instance, string name)
