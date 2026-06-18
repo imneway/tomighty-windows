@@ -60,6 +60,7 @@ namespace Tomighty.Tools
                 AssertTitleOnlyStateIsCompact(backdrop);
                 AssertDpiRefreshResetsTimerFonts(backdrop);
                 AssertDpiRefreshResetsTitleOnlyLayout(backdrop);
+                AssertAllStatesSurviveDpiRoundTrip(backdrop);
                 SetThemeOverride(null);
                 backdrop.Close();
             }
@@ -93,18 +94,7 @@ namespace Tomighty.Tools
             foreach (var stalePng in Directory.GetFiles(outputDirectory, "*.png"))
                 File.Delete(stalePng);
 
-            var shots = new[]
-            {
-                TimerStateShot.Timed("01-pomodoro", "Pomodoro", "25:00", "Interrupt", ActionButtonBackColor),
-                TimerStateShot.Timed("02-short-break", "Short Break", "05:00", "Interrupt", BreakActionButtonBackColor),
-                TimerStateShot.Timed("03-long-break", "Long Break", "15:00", "Interrupt", BreakActionButtonBackColor),
-                TimerStateShot.Message("04-idle", "Idle", "Start Pomodoro", ActionButtonBackColor),
-                TimerStateShot.MessageActions("05-pomodoro-finished", "Pomodoro finished", "Take a break", "Short", BreakActionButtonBackColor, "Long", NeutralActionButtonBackColor),
-                TimerStateShot.Message("06-break-finished", "Break Finished", "Start Pomodoro", ActionButtonBackColor),
-                TimerStateShot.Message("07-pomodoro-interrupted", "Pomodoro interrupted", "Restart", NeutralActionButtonBackColor),
-                TimerStateShot.Message("08-short-break-interrupted", "Short break interrupted", "Start Pomodoro", ActionButtonBackColor),
-                TimerStateShot.Message("09-long-break-interrupted", "Long break interrupted", "Start Pomodoro", ActionButtonBackColor)
-            };
+            var shots = CreateTimerStateShots();
 
             var images = new Bitmap[shots.Length];
             try
@@ -375,6 +365,43 @@ namespace Tomighty.Tools
             }
         }
 
+        private static void AssertAllStatesSurviveDpiRoundTrip(IWin32Window owner)
+        {
+            foreach (var lightTheme in new[] { true, false })
+            {
+                SetThemeOverride(lightTheme);
+                var shots = CreateTimerStateShots();
+
+                foreach (var shot in shots)
+                {
+                    using (var window = CreateTimerWindow(shot, new Point(120, 120), owner))
+                    {
+                        AssertStateAtDpiScale(window, shot, 1.5f);
+                        AssertStateAtDpiScale(window, shot, 2f);
+                        AssertStateAtDpiScale(window, shot, 1.5f);
+                        window.Close();
+                    }
+                }
+            }
+        }
+
+        private static void AssertStateAtDpiScale(TimerWindow window, TimerStateShot shot, float scale)
+        {
+            InvokeApplyDpiLayoutScale(window, scale);
+            PumpUi();
+
+            AssertTimerWindowState(
+                window,
+                shot.Title,
+                shot.ShowTime,
+                shot.PrimaryActionText,
+                shot.PrimaryActionColor,
+                shot.SecondaryActionText,
+                shot.SecondaryActionColor,
+                shot.MessageText);
+            AssertStateLayout(window, shot, scale);
+        }
+
         private static void AssertTitleOnlyStateIsCompact(IWin32Window owner)
         {
             SetThemeOverride(true);
@@ -524,6 +551,23 @@ namespace Tomighty.Tools
             AssertEqual("timerActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
         }
 
+        private static void AssertStateLayout(TimerWindow window, TimerStateShot shot, float expectedScale)
+        {
+            if (shot.ShowTime)
+            {
+                AssertTimerLayout(window, expectedScale);
+                return;
+            }
+
+            if (shot.HasMessage)
+                AssertMessageLayout(window, expectedScale);
+            else
+                AssertTitleOnlyLayout(window, expectedScale);
+
+            if (shot.HasSecondaryAction)
+                AssertHorizontalActionButtons(window);
+        }
+
         private static void AssertTitleOnlyLayout(TimerWindow window, float expectedScale)
         {
             var layoutScale = GetPrivateField<float>(window, "layoutScale");
@@ -539,6 +583,21 @@ namespace Tomighty.Tools
             AssertEqual("titleOnlyActionGap", 0, actionBounds.Top - titleBounds.Bottom);
             AssertEqual("titleOnlyActionWidth", (int)Math.Round(160 * expectedScale), actionBounds.Width);
             AssertEqual("titleOnlyActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
+        }
+
+        private static void AssertMessageLayout(TimerWindow window, float expectedScale)
+        {
+            var layoutScale = GetPrivateField<float>(window, "layoutScale");
+            AssertNear("messageLayoutScale", expectedScale, layoutScale, 0.01f);
+
+            AssertEqual("messageClientWidth", (int)Math.Round(176 * expectedScale), window.ClientSize.Width);
+            AssertEqual("messageClientHeight", (int)Math.Round((8 + 72 + 32 + 8) * expectedScale), window.ClientSize.Height);
+
+            var messageBounds = InvokeRectangleMethod(window, "GetMessageTitleBounds");
+            var actionBounds = InvokeRectangleMethod(window, "GetPrimaryActionButtonBounds");
+            AssertEqual("messageTitleTop", (int)Math.Round(8 * expectedScale), messageBounds.Top);
+            AssertEqual("messageActionGap", (int)Math.Round(8 * expectedScale), actionBounds.Top - messageBounds.Bottom);
+            AssertEqual("messageActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
         }
 
         private static void AssertHorizontalActionButtons(TimerWindow window)
@@ -638,6 +697,22 @@ namespace Tomighty.Tools
             form.Invalidate(true);
             form.Update();
             return form;
+        }
+
+        private static TimerStateShot[] CreateTimerStateShots()
+        {
+            return new[]
+            {
+                TimerStateShot.Timed("01-pomodoro", "Pomodoro", "25:00", "Interrupt", ActionButtonBackColor),
+                TimerStateShot.Timed("02-short-break", "Short Break", "05:00", "Interrupt", BreakActionButtonBackColor),
+                TimerStateShot.Timed("03-long-break", "Long Break", "15:00", "Interrupt", BreakActionButtonBackColor),
+                TimerStateShot.Message("04-idle", "Idle", "Start Pomodoro", ActionButtonBackColor),
+                TimerStateShot.MessageActions("05-pomodoro-finished", "Pomodoro finished", "Take a break", "Short", BreakActionButtonBackColor, "Long", NeutralActionButtonBackColor),
+                TimerStateShot.Message("06-break-finished", "Break Finished", "Start Pomodoro", ActionButtonBackColor),
+                TimerStateShot.Message("07-pomodoro-interrupted", "Pomodoro interrupted", "Restart", NeutralActionButtonBackColor),
+                TimerStateShot.Message("08-short-break-interrupted", "Short break interrupted", "Start Pomodoro", ActionButtonBackColor),
+                TimerStateShot.Message("09-long-break-interrupted", "Long break interrupted", "Start Pomodoro", ActionButtonBackColor)
+            };
         }
 
         private static void SaveContactSheet(Bitmap[] images, string output)
