@@ -26,9 +26,13 @@ namespace Tomighty.Windows
 
             var trayMenu = new TrayMenu() as ITrayMenu;
             var trayIcon = CreateTrayIcon(trayMenu);
+            var initialTrayIcon = TrayIconFactory.CreateDefaultIcon();
+            trayIcon.Icon = initialTrayIcon;
+            trayIcon.Visible = true;
+
             var timerWindowPresenter = new TimerWindowPresenter(pomodoroEngine, timer, eventHub);
             var trayIconController = new TrayIconController(trayIcon, timerWindowPresenter, userPreferences, eventHub);
-            trayIcon.Visible = true;
+            initialTrayIcon.Dispose();
 
             new TrayMenuController(trayMenu, this, pomodoroEngine, eventHub);
             new NotificationsPresenter(pomodoroEngine, userPreferences, eventHub);

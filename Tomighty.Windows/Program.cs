@@ -6,6 +6,7 @@
 //
 
 using System;
+using System.Threading;
 using System.Windows.Forms;
 using Tomighty.Windows.UI;
 
@@ -13,22 +14,30 @@ namespace Tomighty.Windows
 {
     static class Program
     {
+        private const string SingleInstanceMutexName = "Local\\Tomighty.Windows.SingleInstance";
+
         [STAThread]
         static void Main()
         {
-            DpiHelper.EnablePerMonitorV2();
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            AppDomain.CurrentDomain.UnhandledException += (sender, args) => HandleUnhandledException(args.ExceptionObject as Exception);
-            Application.ThreadException += (sender, args) => HandleUnhandledException(args.Exception);
+            using (var mutex = new Mutex(true, SingleInstanceMutexName, out var ownsMutex))
+            {
+                if (!ownsMutex)
+                    return;
 
-            try
-            {
-                Application.Run(new TomightyApplication());
-            }
-            catch(Exception e)
-            {
-                Application.Run(new ErrorReportWindow(e));
+                DpiHelper.EnablePerMonitorV2();
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                AppDomain.CurrentDomain.UnhandledException += (sender, args) => HandleUnhandledException(args.ExceptionObject as Exception);
+                Application.ThreadException += (sender, args) => HandleUnhandledException(args.Exception);
+
+                try
+                {
+                    Application.Run(new TomightyApplication());
+                }
+                catch(Exception e)
+                {
+                    Application.Run(new ErrorReportWindow(e));
+                }
             }
         }
 
