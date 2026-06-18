@@ -393,14 +393,16 @@ namespace Tomighty.Tools
                 PumpUi();
 
                 var layoutScale = GetPrivateField<float>(window, "layoutScale");
-                var expectedHeight = (int)Math.Round((8 + 20 + 16 + 36 + 8) * layoutScale);
+                var expectedHeight = (int)Math.Round((8 + 24 + 24 + 32 + 8) * layoutScale);
                 AssertEqual("titleOnlyClientHeight", expectedHeight, window.ClientSize.Height);
                 AssertTimerTypography(window);
 
-                var titleBounds = InvokeRectangleMethod(window, "GetTitleBounds");
+                var titleBounds = InvokeRectangleMethod(window, "GetTitleOnlyTitleBounds");
                 var actionBounds = InvokeRectangleMethod(window, "GetPrimaryActionButtonBounds");
                 AssertEqual("titleOnlyTitleTop", (int)Math.Round(8 * layoutScale), titleBounds.Top);
-                AssertEqual("titleOnlyActionGap", (int)Math.Round(16 * layoutScale), actionBounds.Top - titleBounds.Bottom);
+                AssertEqual("titleOnlyActionGap", (int)Math.Round(24 * layoutScale), actionBounds.Top - titleBounds.Bottom);
+                AssertEqual("titleOnlyActionWidth", (int)Math.Round(160 * layoutScale), actionBounds.Width);
+                AssertEqual("titleOnlyActionHeight", (int)Math.Round(32 * layoutScale), actionBounds.Height);
 
                 window.Close();
             }
@@ -469,15 +471,21 @@ namespace Tomighty.Tools
             var secondaryBounds = InvokeRectangleMethod(window, "GetSecondaryActionButtonBounds");
             var layoutScale = GetPrivateField<float>(window, "layoutScale");
             var expectedGap = (int)Math.Round(4f * layoutScale);
+            var expectedWidth = (int)Math.Round((160f - 4f) / 2f * layoutScale);
+            var expectedHeight = (int)Math.Round(32f * layoutScale);
 
             AssertEqual("secondaryActionY", primaryBounds.Top, secondaryBounds.Top);
             AssertEqual("actionButtonGap", expectedGap, secondaryBounds.Left - primaryBounds.Right);
+            AssertEqual("primaryActionWidth", expectedWidth, primaryBounds.Width);
+            AssertEqual("secondaryActionWidth", expectedWidth, secondaryBounds.Width);
+            AssertEqual("primaryActionHeight", expectedHeight, primaryBounds.Height);
+            AssertEqual("secondaryActionHeight", expectedHeight, secondaryBounds.Height);
         }
 
         private static Rectangle InvokeRectangleMethod(TimerWindow window, string methodName)
         {
             return (Rectangle)typeof(TimerWindow)
-                .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic, null, Type.EmptyTypes, null)
                 .Invoke(window, new object[0]);
         }
 
