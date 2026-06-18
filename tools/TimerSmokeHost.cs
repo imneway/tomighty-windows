@@ -93,14 +93,14 @@ namespace Tomighty.Tools
             var shots = new[]
             {
                 TimerStateShot.Timed("01-pomodoro", "Pomodoro", "25:00", "Interrupt", ActionButtonBackColor),
-                TimerStateShot.Timed("02-short-break", "Short Break", "05:00", "Interrupt", BreakActionButtonBackColor),
-                TimerStateShot.Timed("03-long-break", "Long Break", "15:00", "Interrupt", BreakActionButtonBackColor),
+                TimerStateShot.TimedActions("02-short-break", "Short Break", "05:00", "Interrupt", BreakActionButtonBackColor, "Skip", NeutralActionButtonBackColor),
+                TimerStateShot.TimedActions("03-long-break", "Long Break", "15:00", "Interrupt", BreakActionButtonBackColor, "Skip", NeutralActionButtonBackColor),
                 TimerStateShot.Message("04-idle", "Idle", "Start Pomodoro", ActionButtonBackColor),
                 TimerStateShot.MessageActions("05-pomodoro-finished", "Pomodoro finished", "Take a break", "Short", BreakActionButtonBackColor, "Long", NeutralActionButtonBackColor),
                 TimerStateShot.Message("06-break-finished", "Break Finished", "Start Pomodoro", ActionButtonBackColor),
                 TimerStateShot.Message("07-pomodoro-interrupted", "Pomodoro interrupted", "Restart", NeutralActionButtonBackColor),
-                TimerStateShot.Message("08-short-break-interrupted", "Short break interrupted", "Restart", NeutralActionButtonBackColor),
-                TimerStateShot.Message("09-long-break-interrupted", "Long break interrupted", "Restart", NeutralActionButtonBackColor)
+                TimerStateShot.MessageActions("08-short-break-interrupted", "Short break interrupted", "", "Pomodoro", ActionButtonBackColor, "Restart", NeutralActionButtonBackColor),
+                TimerStateShot.MessageActions("09-long-break-interrupted", "Long break interrupted", "", "Pomodoro", ActionButtonBackColor, "Restart", NeutralActionButtonBackColor)
             };
 
             var images = new Bitmap[shots.Length];
@@ -173,19 +173,19 @@ namespace Tomighty.Tools
 
                 engine.StartTimer(IntervalType.ShortBreak);
                 PumpUi();
-                CaptureAndAssertDrivenState(outputDirectory, images, window, "04-short-break-running", "Short Break", true, "Interrupt", BreakActionButtonBackColor);
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "04-short-break-running", "Short Break", true, "Interrupt", BreakActionButtonBackColor, "Skip", NeutralActionButtonBackColor);
 
                 ClickPrimaryAction(window);
                 PumpUi();
-                CaptureAndAssertDrivenState(outputDirectory, images, window, "05-short-break-interrupted", "Short break interrupted", false, "Restart", NeutralActionButtonBackColor);
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "05-short-break-interrupted", "Short break interrupted", false, "Pomodoro", ActionButtonBackColor, "Restart", NeutralActionButtonBackColor);
 
                 engine.StartTimer(IntervalType.LongBreak);
                 PumpUi();
-                CaptureAndAssertDrivenState(outputDirectory, images, window, "06-long-break-running", "Long Break", true, "Interrupt", BreakActionButtonBackColor);
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "06-long-break-running", "Long Break", true, "Interrupt", BreakActionButtonBackColor, "Skip", NeutralActionButtonBackColor);
 
                 ClickPrimaryAction(window);
                 PumpUi();
-                CaptureAndAssertDrivenState(outputDirectory, images, window, "07-long-break-interrupted", "Long break interrupted", false, "Restart", NeutralActionButtonBackColor);
+                CaptureAndAssertDrivenState(outputDirectory, images, window, "07-long-break-interrupted", "Long break interrupted", false, "Pomodoro", ActionButtonBackColor, "Restart", NeutralActionButtonBackColor);
 
                 eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
                 PumpUi();
@@ -548,6 +548,11 @@ namespace Tomighty.Tools
             public static TimerStateShot Timed(string fileName, string title, string time, string actionText, Color actionColor)
             {
                 return new TimerStateShot(fileName, title, time, "", true, actionColor, actionText, actionColor, "", NeutralActionButtonBackColor);
+            }
+
+            public static TimerStateShot TimedActions(string fileName, string title, string time, string primaryActionText, Color primaryActionColor, string secondaryActionText, Color secondaryActionColor)
+            {
+                return new TimerStateShot(fileName, title, time, "", true, primaryActionColor, primaryActionText, primaryActionColor, secondaryActionText, secondaryActionColor);
             }
 
             public static TimerStateShot Message(string fileName, string title, string primaryActionText, Color primaryActionColor)
