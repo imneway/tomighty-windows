@@ -42,6 +42,14 @@ namespace Tomighty.Windows.UI
         public static Color ControlHoverBackColor => IsLightTheme ? Color.FromArgb(229, 241, 251) : Color.FromArgb(62, 62, 62);
         public static Color ControlPressedBackColor => IsLightTheme ? Color.FromArgb(204, 228, 247) : Color.FromArgb(73, 73, 73);
         public static Color TextColor => IsLightTheme ? Color.FromArgb(PrimaryTextAlpha, 0, 0, 0) : Color.FromArgb(PrimaryTextAlpha, 255, 255, 255);
+        public static Color ControlTextColor => Blend(
+            IsLightTheme ? Color.Black : Color.White,
+            WindowBackColor,
+            PrimaryTextAlpha);
+        public static Color ControlSecondaryTextColor => Blend(
+            IsLightTheme ? Color.Black : Color.White,
+            WindowBackColor,
+            153);
         public static Color TimerTextColor => TextColor;
         public static Color SecondaryTextColor => IsLightTheme ? SystemColors.GrayText : Color.FromArgb(200, 200, 200);
         public static Color BorderColor => IsLightTheme ? Color.FromArgb(138, 0, 0, 0) : Color.FromArgb(118, 255, 255, 255);
@@ -53,8 +61,8 @@ namespace Tomighty.Windows.UI
         public static Color ActionButtonTextColor => Color.FromArgb(PrimaryTextAlpha, 255, 255, 255);
         public static Color InputBackColor => IsLightTheme ? SystemColors.Window : Color.FromArgb(32, 32, 32);
         public static Color MenuBackColor => IsLightTheme ? CommandPaletteLightBaseColor : Color.FromArgb(32, 32, 32);
-        public static Color MenuTextColor => TextColor;
-        public static Color MenuSecondaryTextColor => IsLightTheme ? Color.FromArgb(153, 0, 0, 0) : Color.FromArgb(153, 255, 255, 255);
+        public static Color MenuTextColor => ControlTextColor;
+        public static Color MenuSecondaryTextColor => ControlSecondaryTextColor;
         public static bool IsTimerDisplayFontAvailable => TimerDisplayFontAvailable.Value;
         public static bool IsTimerDisplayMediumFontAvailable => TimerDisplayMediumFontAvailable.Value;
 
@@ -138,7 +146,7 @@ namespace Tomighty.Windows.UI
             button.FlatStyle = FlatStyle.Flat;
             button.UseVisualStyleBackColor = false;
             button.BackColor = ControlBackColor;
-            button.ForeColor = TextColor;
+            button.ForeColor = ControlTextColor;
             button.FlatAppearance.BorderColor = BorderColor;
             button.FlatAppearance.MouseOverBackColor = ControlHoverBackColor;
             button.FlatAppearance.MouseDownBackColor = ControlPressedBackColor;
@@ -153,7 +161,7 @@ namespace Tomighty.Windows.UI
         {
             button.FlatStyle = FlatStyle.Flat;
             button.BackColor = Color.Transparent;
-            button.ForeColor = TextColor;
+            button.ForeColor = ControlTextColor;
             button.FlatAppearance.BorderSize = 0;
             button.FlatAppearance.MouseOverBackColor = ControlHoverBackColor;
             button.FlatAppearance.MouseDownBackColor = ControlPressedBackColor;
@@ -188,7 +196,7 @@ namespace Tomighty.Windows.UI
         private static void ApplyNativeForm(Form form, BackdropMaterial material, Func<Color> backColorProvider, Action refreshBackdrop)
         {
             form.BackColor = backColorProvider();
-            form.ForeColor = TextColor;
+            form.ForeColor = ControlTextColor;
             form.Font = SystemFonts.MessageBoxFont;
             form.Icon = Properties.Resources.icon_tomato_red;
 
@@ -196,7 +204,7 @@ namespace Tomighty.Windows.UI
             RegisterThemeChange(form, () =>
             {
                 form.BackColor = backColorProvider();
-                form.ForeColor = TextColor;
+                form.ForeColor = ControlTextColor;
                 ApplyControls(form.Controls);
                 refreshBackdrop();
                 form.Invalidate(true);
@@ -215,7 +223,7 @@ namespace Tomighty.Windows.UI
         private static void ApplyControl(Control control)
         {
             control.Font = SystemFonts.MessageBoxFont;
-            control.ForeColor = TextColor;
+            control.ForeColor = ControlTextColor;
 
             if (control is Label)
             {
@@ -229,32 +237,43 @@ namespace Tomighty.Windows.UI
             {
                 var textBox = (TextBoxBase)control;
                 textBox.BackColor = InputBackColor;
-                textBox.ForeColor = TextColor;
+                textBox.ForeColor = ControlTextColor;
                 textBox.BorderStyle = BorderStyle.FixedSingle;
             }
             else if (control is NumericUpDown)
             {
                 control.BackColor = InputBackColor;
-                control.ForeColor = TextColor;
+                control.ForeColor = ControlTextColor;
             }
             else if (control is CheckBox)
             {
                 control.BackColor = Color.Transparent;
-                control.ForeColor = TextColor;
+                control.ForeColor = ControlTextColor;
             }
             else if (control is GroupBox)
             {
                 control.BackColor = Color.Transparent;
-                control.ForeColor = SecondaryTextColor;
+                control.ForeColor = ControlSecondaryTextColor;
             }
             else if (control is TabControl)
             {
                 control.BackColor = WindowBackColor;
+                control.ForeColor = ControlTextColor;
             }
             else if (control is TabPage)
             {
                 control.BackColor = WindowBackColor;
+                control.ForeColor = ControlTextColor;
             }
+        }
+
+        private static Color Blend(Color foreground, Color background, int alpha)
+        {
+            var inverseAlpha = 255 - alpha;
+            return Color.FromArgb(
+                (foreground.R * alpha + background.R * inverseAlpha) / 255,
+                (foreground.G * alpha + background.G * inverseAlpha) / 255,
+                (foreground.B * alpha + background.B * inverseAlpha) / 255);
         }
 
         private static void ApplyContextMenuColors(ContextMenuStrip menu)

@@ -102,6 +102,7 @@
     <Compile Include="Host.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Notifications\SoundNotificationPlayer.cs" />
+    <Compile Include="Preferences\StartupRegistration.cs" />
     <Compile Include="Preferences\UserPreferencesPresenter.cs" />
     <Compile Include="Flags.cs" />
     <Compile Include="StartupEventFlags.cs" />

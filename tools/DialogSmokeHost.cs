@@ -30,6 +30,14 @@ namespace Tomighty.Tools
             Directory.CreateDirectory(args[0]);
 
             Capture("preferences.png", args[0], () => new UserPreferencesForm(new SmokePreferences()));
+            Capture("preferences-miscellaneous.png", args[0], () =>
+            {
+                var form = new UserPreferencesForm(new SmokePreferences());
+                var tabs = FindControl<TabControl>(form);
+                if (tabs != null)
+                    tabs.SelectedIndex = 2;
+                return form;
+            });
             Capture("about.png", args[0], () => new AboutWindow());
             Capture("error.png", args[0], () => new ErrorReportWindow(new Exception("UI smoke error")));
 
@@ -50,6 +58,21 @@ namespace Tomighty.Tools
                 CaptureForm(form, Path.Combine(outputDirectory, fileName));
                 form.Close();
             }
+        }
+
+        private static T FindControl<T>(Control parent) where T : Control
+        {
+            foreach (Control control in parent.Controls)
+            {
+                if (control is T)
+                    return (T)control;
+
+                var child = FindControl<T>(control);
+                if (child != null)
+                    return child;
+            }
+
+            return null;
         }
 
         private static void CaptureForm(Form form, string output)

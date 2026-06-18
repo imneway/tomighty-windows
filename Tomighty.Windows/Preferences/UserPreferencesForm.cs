@@ -28,6 +28,7 @@ namespace Tomighty.Windows.Preferences
             soundNotifications.Checked = userPreferences.PlaySoundNotifications;
             showRemainingTimeOnTray.Checked = userPreferences.ShowRemainingTimeOnTray;
             autoupdate.Checked = userPreferences.AutoUpdate;
+            startWithWindows.Checked = StartupRegistration.IsEnabled;
 
             ModernTheme.ApplyMicaDialog(this);
             ModernTheme.StyleDefaultButton(okButton);
@@ -51,6 +52,7 @@ namespace Tomighty.Windows.Preferences
                 newPreferences.ShowRemainingTimeOnTray = showRemainingTimeOnTray.Checked;
                 newPreferences.AutoUpdate = autoupdate.Checked;
             });
+            StartupRegistration.SetEnabled(startWithWindows.Checked);
 
             Close();
         }

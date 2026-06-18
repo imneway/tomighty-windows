@@ -57,6 +57,7 @@ namespace Tomighty.Windows.Preferences
             this.toastNotification = new System.Windows.Forms.CheckBox();
             this.label8 = new System.Windows.Forms.Label();
             this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.startWithWindows = new System.Windows.Forms.CheckBox();
             this.showRemainingTimeOnTray = new System.Windows.Forms.CheckBox();
             this.autoupdate = new System.Windows.Forms.CheckBox();
             this.groupBox1.SuspendLayout();
@@ -352,8 +353,9 @@ namespace Tomighty.Windows.Preferences
             // 
             // tabPage3
             //
-            this.tabPage3.Controls.Add(this.showRemainingTimeOnTray);
+            this.tabPage3.Controls.Add(this.startWithWindows);
             this.tabPage3.Controls.Add(this.autoupdate);
+            this.tabPage3.Controls.Add(this.showRemainingTimeOnTray);
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.Padding = new System.Windows.Forms.Padding(10);
@@ -361,6 +363,16 @@ namespace Tomighty.Windows.Preferences
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Miscellaneous";
             this.tabPage3.UseVisualStyleBackColor = true;
+            //
+            // startWithWindows
+            //
+            this.startWithWindows.AutoSize = true;
+            this.startWithWindows.Location = new System.Drawing.Point(14, 14);
+            this.startWithWindows.Name = "startWithWindows";
+            this.startWithWindows.Size = new System.Drawing.Size(194, 17);
+            this.startWithWindows.TabIndex = 0;
+            this.startWithWindows.Text = "Start Tomighty when Windows starts";
+            this.startWithWindows.UseVisualStyleBackColor = true;
             //
             // showRemainingTimeOnTray
             //
@@ -375,10 +387,10 @@ namespace Tomighty.Windows.Preferences
             // autoupdate
             // 
             this.autoupdate.AutoSize = true;
-            this.autoupdate.Location = new System.Drawing.Point(14, 14);
+            this.autoupdate.Location = new System.Drawing.Point(14, 60);
             this.autoupdate.Name = "autoupdate";
             this.autoupdate.Size = new System.Drawing.Size(228, 17);
-            this.autoupdate.TabIndex = 0;
+            this.autoupdate.TabIndex = 2;
             this.autoupdate.Text = "Automatically download and install updates";
             this.autoupdate.UseVisualStyleBackColor = true;
             // 
@@ -440,6 +452,7 @@ namespace Tomighty.Windows.Preferences
         private System.Windows.Forms.CheckBox toastNotification;
         private System.Windows.Forms.CheckBox soundNotifications;
         private System.Windows.Forms.TabPage tabPage3;
+        private System.Windows.Forms.CheckBox startWithWindows;
         private System.Windows.Forms.CheckBox showRemainingTimeOnTray;
         private System.Windows.Forms.CheckBox autoupdate;
     }
