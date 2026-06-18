@@ -393,15 +393,16 @@ namespace Tomighty.Tools
                 PumpUi();
 
                 var layoutScale = GetPrivateField<float>(window, "layoutScale");
-                var expectedHeight = (int)Math.Round((8 + 20 + 12 + 48 + 20 + 32 + 8) * layoutScale);
+                var expectedHeight = (int)Math.Round((8 + 64 + 32 + 8) * layoutScale);
+                AssertNear("titleOnlyFontSizeConstant", 13f, GetPrivateStaticField<float>(typeof(TimerWindow), "TitleOnlyFontSize"), 0.01f);
                 AssertEqual("titleOnlyClientHeight", expectedHeight, window.ClientSize.Height);
                 AssertTimerTypography(window);
 
                 var titleBounds = InvokeRectangleMethod(window, "GetTitleOnlyTitleBounds");
                 var actionBounds = InvokeRectangleMethod(window, "GetPrimaryActionButtonBounds");
-                AssertEqual("titleOnlyTitleTop", (int)Math.Round((8 + 20 + 12) * layoutScale), titleBounds.Top);
-                AssertEqual("titleOnlyTitleHeight", (int)Math.Round(48 * layoutScale), titleBounds.Height);
-                AssertEqual("titleOnlyActionGap", (int)Math.Round(20 * layoutScale), actionBounds.Top - titleBounds.Bottom);
+                AssertEqual("titleOnlyTitleTop", (int)Math.Round(8 * layoutScale), titleBounds.Top);
+                AssertEqual("titleOnlyTitleHeight", (int)Math.Round(64 * layoutScale), titleBounds.Height);
+                AssertEqual("titleOnlyActionGap", 0, actionBounds.Top - titleBounds.Bottom);
                 AssertEqual("titleOnlyActionWidth", (int)Math.Round(160 * layoutScale), actionBounds.Width);
                 AssertEqual("titleOnlyActionHeight", (int)Math.Round(32 * layoutScale), actionBounds.Height);
 
@@ -525,6 +526,11 @@ namespace Tomighty.Tools
         private static T GetPrivateField<T>(object instance, string name)
         {
             return (T)instance.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(instance);
+        }
+
+        private static T GetPrivateStaticField<T>(Type type, string name)
+        {
+            return (T)type.GetField(name, BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
         }
 
         private static Color GetModernThemeColor(string propertyName)
