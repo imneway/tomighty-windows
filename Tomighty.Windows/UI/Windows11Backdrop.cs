@@ -135,8 +135,11 @@ namespace Tomighty.Windows.UI
             var backdrop = (int)material;
             TrySetAttribute(handle, DWMWA_SYSTEMBACKDROP_TYPE, backdrop);
 
-            var margins = Margins.ExtendIntoClientArea;
-            DwmExtendFrameIntoClientArea(handle, ref margins);
+            if (useAcrylicAccent)
+            {
+                var margins = Margins.ExtendIntoClientArea;
+                DwmExtendFrameIntoClientArea(handle, ref margins);
+            }
 
             if (useAcrylicAccent)
                 TrySetAcrylicAccent(handle, isDarkMode);
