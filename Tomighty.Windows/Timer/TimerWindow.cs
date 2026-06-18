@@ -235,10 +235,10 @@ namespace Tomighty.Windows.Timer
         {
             var bottom = Bottom;
             var wasVisible = Visible;
-            var compactSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(GetCompactHeight()));
-            if (Size != compactSize)
+            var compactClientSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(GetCompactHeight()));
+            if (ClientSize != compactClientSize)
             {
-                Size = compactSize;
+                ClientSize = compactClientSize;
 
                 if (wasVisible)
                     Top = bottom - Height;

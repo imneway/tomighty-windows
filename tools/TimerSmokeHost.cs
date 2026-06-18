@@ -59,6 +59,7 @@ namespace Tomighty.Tools
                 AssertThemeSwitchUpdatesTimerWindow(backdrop);
                 AssertTitleOnlyStateIsCompact(backdrop);
                 AssertDpiRefreshResetsTimerFonts(backdrop);
+                AssertDpiRefreshResetsTitleOnlyLayout(backdrop);
                 SetThemeOverride(null);
                 backdrop.Close();
             }
@@ -393,18 +394,9 @@ namespace Tomighty.Tools
                 PumpUi();
 
                 var layoutScale = GetPrivateField<float>(window, "layoutScale");
-                var expectedHeight = (int)Math.Round((8 + 64 + 32 + 8) * layoutScale);
                 AssertNear("titleOnlyFontSizeConstant", 13f, GetPrivateStaticField<float>(typeof(TimerWindow), "TitleOnlyFontSize"), 0.01f);
-                AssertEqual("titleOnlyClientHeight", expectedHeight, window.ClientSize.Height);
                 AssertTimerTypography(window);
-
-                var titleBounds = InvokeRectangleMethod(window, "GetTitleOnlyTitleBounds");
-                var actionBounds = InvokeRectangleMethod(window, "GetPrimaryActionButtonBounds");
-                AssertEqual("titleOnlyTitleTop", (int)Math.Round(8 * layoutScale), titleBounds.Top);
-                AssertEqual("titleOnlyTitleHeight", (int)Math.Round(64 * layoutScale), titleBounds.Height);
-                AssertEqual("titleOnlyActionGap", 0, actionBounds.Top - titleBounds.Bottom);
-                AssertEqual("titleOnlyActionWidth", (int)Math.Round(160 * layoutScale), actionBounds.Width);
-                AssertEqual("titleOnlyActionHeight", (int)Math.Round(32 * layoutScale), actionBounds.Height);
+                AssertTitleOnlyLayout(window, layoutScale);
 
                 window.Close();
             }
@@ -445,6 +437,39 @@ namespace Tomighty.Tools
 
                 AssertTimerTypography(window);
                 AssertTimerLayout(window, 1f);
+                window.Close();
+            }
+        }
+
+        private static void AssertDpiRefreshResetsTitleOnlyLayout(IWin32Window owner)
+        {
+            SetThemeOverride(true);
+
+            using (var window = new TimerWindow())
+            {
+                window.UpdateTitle("Break Finished");
+                window.HideTimeDisplay();
+                window.SetTimerAction("Start Pomodoro", () => { }, ActionButtonBackColor);
+                window.StartPosition = FormStartPosition.Manual;
+
+                if (!window.IsHandleCreated && window.Handle == IntPtr.Zero)
+                    throw new InvalidOperationException("TimerWindow handle was not created.");
+
+                window.Location = new Point(120, 120);
+                window.Show(owner);
+                PumpUi();
+
+                InvokeApplyDpiLayoutScale(window, 2f);
+                PumpUi();
+
+                AssertTimerTypography(window);
+                AssertTitleOnlyLayout(window, 2f);
+
+                InvokeApplyDpiLayoutScale(window, 1f);
+                PumpUi();
+
+                AssertTimerTypography(window);
+                AssertTitleOnlyLayout(window, 1f);
                 window.Close();
             }
         }
@@ -497,6 +522,23 @@ namespace Tomighty.Tools
             AssertEqual("timerTimeHeight", (int)Math.Round(48 * expectedScale), timeBounds.Height);
             AssertEqual("timerTimeActionGap", (int)Math.Round(14 * expectedScale), actionBounds.Top - timeBounds.Bottom);
             AssertEqual("timerActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
+        }
+
+        private static void AssertTitleOnlyLayout(TimerWindow window, float expectedScale)
+        {
+            var layoutScale = GetPrivateField<float>(window, "layoutScale");
+            AssertNear("titleOnlyLayoutScale", expectedScale, layoutScale, 0.01f);
+
+            AssertEqual("titleOnlyClientWidth", (int)Math.Round(176 * expectedScale), window.ClientSize.Width);
+            AssertEqual("titleOnlyClientHeight", (int)Math.Round((8 + 64 + 32 + 8) * expectedScale), window.ClientSize.Height);
+
+            var titleBounds = InvokeRectangleMethod(window, "GetTitleOnlyTitleBounds");
+            var actionBounds = InvokeRectangleMethod(window, "GetPrimaryActionButtonBounds");
+            AssertEqual("titleOnlyTitleTop", (int)Math.Round(8 * expectedScale), titleBounds.Top);
+            AssertEqual("titleOnlyTitleHeight", (int)Math.Round(64 * expectedScale), titleBounds.Height);
+            AssertEqual("titleOnlyActionGap", 0, actionBounds.Top - titleBounds.Bottom);
+            AssertEqual("titleOnlyActionWidth", (int)Math.Round(160 * expectedScale), actionBounds.Width);
+            AssertEqual("titleOnlyActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
         }
 
         private static void AssertHorizontalActionButtons(TimerWindow window)
