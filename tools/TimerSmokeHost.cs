@@ -659,7 +659,7 @@ namespace Tomighty.Tools
             }
 
             if (shot.HasMessage)
-                AssertMessageLayout(window, expectedScale, shot.HasSecondaryAction);
+                AssertMessageLayout(window, expectedScale);
             else
                 AssertTitleOnlyLayout(window, expectedScale);
 
@@ -684,15 +684,12 @@ namespace Tomighty.Tools
             AssertEqual("titleOnlyActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
         }
 
-        private static void AssertMessageLayout(TimerWindow window, float expectedScale, bool hasSecondaryAction)
+        private static void AssertMessageLayout(TimerWindow window, float expectedScale)
         {
             var layoutScale = GetPrivateField<float>(window, "layoutScale");
             AssertNear("messageLayoutScale", expectedScale, layoutScale, 0.01f);
 
-            var expectedWidth = hasSecondaryAction
-                ? 160 + 4 + 160 + 8 * 2
-                : 176;
-            AssertEqual("messageClientWidth", (int)Math.Round(expectedWidth * expectedScale), window.ClientSize.Width);
+            AssertEqual("messageClientWidth", (int)Math.Round(176 * expectedScale), window.ClientSize.Width);
             AssertEqual("messageClientHeight", (int)Math.Round((8 + 72 + 32 + 8) * expectedScale), window.ClientSize.Height);
 
             var messageBounds = InvokeRectangleMethod(window, "GetMessageTitleBounds");
@@ -708,7 +705,7 @@ namespace Tomighty.Tools
             var secondaryBounds = InvokeRectangleMethod(window, "GetSecondaryActionButtonBounds");
             var layoutScale = GetPrivateField<float>(window, "layoutScale");
             var expectedGap = (int)Math.Round(4f * layoutScale);
-            var expectedWidth = (int)Math.Round(160f * layoutScale);
+            var expectedWidth = (int)Math.Round((160f - 4f) / 2f * layoutScale);
             var expectedHeight = (int)Math.Round(32f * layoutScale);
 
             AssertEqual("secondaryActionY", primaryBounds.Top, secondaryBounds.Top);
