@@ -37,7 +37,6 @@ namespace Tomighty.Windows.Timer
         private const int TimeHeight = 48;
         private const int MessageTitleHeight = 72;
         private const int TitleOnlyContentHeight = 64;
-        private const int CompactWidth = ActionButtonWidth + CompactPadding * 2;
         private const int CompactHeight = CompactPadding + TitleHeight + TimeVerticalMargin + TimeHeight + TimeVerticalMargin + ActionButtonHeight + CompactPadding;
         private const int CompactMessageHeight = CompactPadding + MessageTitleHeight + ActionButtonHeight + CompactPadding;
         private const int CompactTitleOnlyHeight = CompactPadding + TitleOnlyContentHeight + ActionButtonHeight + CompactPadding;
@@ -235,7 +234,7 @@ namespace Tomighty.Windows.Timer
         {
             var bottom = Bottom;
             var wasVisible = Visible;
-            var compactClientSize = new Size(ScaleLayout(CompactWidth), ScaleLayout(GetCompactHeight()));
+            var compactClientSize = new Size(ScaleLayout(GetCompactWidth()), ScaleLayout(GetCompactHeight()));
             if (ClientSize != compactClientSize)
             {
                 ClientSize = compactClientSize;
@@ -515,19 +514,16 @@ namespace Tomighty.Windows.Timer
 
         private Rectangle GetPrimaryActionButtonBounds()
         {
-            var padding = ScaleLayout(CompactPadding);
-            var fullWidth = Math.Min(ScaleLayout(ActionButtonWidth), ClientSize.Width - padding * 2);
-            var width = HasSecondaryAction ? (fullWidth - ScaleLayout(ActionButtonGap)) / 2 : fullWidth;
+            var groupWidth = GetActionButtonGroupWidth();
+            var width = ScaleLayout(ActionButtonWidth);
             var height = ScaleLayout(ActionButtonHeight);
-            var groupLeft = (ClientSize.Width - fullWidth) / 2;
+            var groupLeft = (ClientSize.Width - groupWidth) / 2;
             return new Rectangle(groupLeft, GetFirstActionButtonTop(), width, height);
         }
 
         private Rectangle GetSecondaryActionButtonBounds()
         {
-            var padding = ScaleLayout(CompactPadding);
-            var fullWidth = Math.Min(ScaleLayout(ActionButtonWidth), ClientSize.Width - padding * 2);
-            var width = (fullWidth - ScaleLayout(ActionButtonGap)) / 2;
+            var width = ScaleLayout(ActionButtonWidth);
             var height = ScaleLayout(ActionButtonHeight);
             var primaryBounds = GetPrimaryActionButtonBounds();
             return new Rectangle(primaryBounds.Right + ScaleLayout(ActionButtonGap), primaryBounds.Top, width, height);
@@ -547,6 +543,24 @@ namespace Tomighty.Windows.Timer
                 return CompactHeight;
 
             return HasMessage ? CompactMessageHeight : CompactTitleOnlyHeight;
+        }
+
+        private int GetCompactWidth()
+        {
+            var actionWidth = HasSecondaryAction
+                ? ActionButtonWidth * 2 + ActionButtonGap
+                : ActionButtonWidth;
+
+            return actionWidth + CompactPadding * 2;
+        }
+
+        private int GetActionButtonGroupWidth()
+        {
+            var actionWidth = ScaleLayout(ActionButtonWidth);
+            if (!HasSecondaryAction)
+                return actionWidth;
+
+            return actionWidth * 2 + ScaleLayout(ActionButtonGap);
         }
 
         private int ScaleLayout(int value)
