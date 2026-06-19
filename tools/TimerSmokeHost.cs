@@ -647,7 +647,7 @@ namespace Tomighty.Tools
             AssertEqual("timerTimeTop", (int)Math.Round((8 + 20 + 14) * expectedScale), timeBounds.Top);
             AssertEqual("timerTimeHeight", (int)Math.Round(48 * expectedScale), timeBounds.Height);
             AssertEqual("timerTimeActionGap", (int)Math.Round(14 * expectedScale), actionBounds.Top - timeBounds.Bottom);
-            AssertEqual("timerActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
+            AssertSingleActionButton(window, expectedScale);
         }
 
         private static void AssertStateLayout(TimerWindow window, TimerStateShot shot, float expectedScale)
@@ -665,6 +665,8 @@ namespace Tomighty.Tools
 
             if (shot.HasSecondaryAction)
                 AssertHorizontalActionButtons(window);
+            else
+                AssertSingleActionButton(window, expectedScale);
         }
 
         private static void AssertTitleOnlyLayout(TimerWindow window, float expectedScale)
@@ -680,8 +682,7 @@ namespace Tomighty.Tools
             AssertEqual("titleOnlyTitleTop", (int)Math.Round(8 * expectedScale), titleBounds.Top);
             AssertEqual("titleOnlyTitleHeight", (int)Math.Round(64 * expectedScale), titleBounds.Height);
             AssertEqual("titleOnlyActionGap", 0, actionBounds.Top - titleBounds.Bottom);
-            AssertEqual("titleOnlyActionWidth", (int)Math.Round(160 * expectedScale), actionBounds.Width);
-            AssertEqual("titleOnlyActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
+            AssertSingleActionButton(window, expectedScale);
         }
 
         private static void AssertMessageLayout(TimerWindow window, float expectedScale)
@@ -697,6 +698,13 @@ namespace Tomighty.Tools
             AssertEqual("messageTitleTop", (int)Math.Round(8 * expectedScale), messageBounds.Top);
             AssertEqual("messageActionGap", (int)Math.Round(8 * expectedScale), actionBounds.Top - messageBounds.Bottom);
             AssertEqual("messageActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
+        }
+
+        private static void AssertSingleActionButton(TimerWindow window, float expectedScale)
+        {
+            var actionBounds = InvokeRectangleMethod(window, "GetPrimaryActionButtonBounds");
+            AssertEqual("singleActionWidth", (int)Math.Round(160 * expectedScale), actionBounds.Width);
+            AssertEqual("singleActionHeight", (int)Math.Round(32 * expectedScale), actionBounds.Height);
         }
 
         private static void AssertHorizontalActionButtons(TimerWindow window)
