@@ -45,6 +45,12 @@ namespace Tomighty.Windows.Timer
         private const int ActionButtonCornerRadius = 8;
         private const int ActionButtonHoverColorOffset = 12;
         private const int ActionButtonPressedColorOffset = -12;
+        private const int PopupEnterOffset = 18;
+        private const int PopupEnterOvershoot = 4;
+        private const int PopupExitOffset = 10;
+        private const int PopupEnterDuration = 260;
+        private const int PopupExitDuration = 150;
+        private const uint SPI_GETUIEFFECTS = 0x103E;
         private const float TitleOnlyFontSize = 13f;
 
         private enum ActionButtonTone
@@ -74,6 +80,8 @@ namespace Tomighty.Windows.Timer
         private ActionButtonTone primaryActionButtonTone = ActionButtonTone.Action;
         private ActionButtonTone secondaryActionButtonTone = ActionButtonTone.Neutral;
         private float layoutScale = 1f;
+        private System.Windows.Forms.Timer popupAnimationTimer;
+        private PopupAnimation popupAnimation;
 
         private readonly Action<string> UpdateTimeDisplayDelegate;
         private readonly Action<string> UpdateTitleDelegate;
@@ -269,14 +277,197 @@ namespace Tomighty.Windows.Timer
 
         public void Show(Point location)
         {
-            Location = location;
             TopMost = true;
-            Show();
+            StopPopupAnimation();
+
+            if (ShouldAnimatePopup())
+            {
+                var offset = ScaleLayout(PopupEnterOffset);
+                Location = new Point(location.X, location.Y + offset);
+                Opacity = 0.0;
+            }
+            else
+            {
+                Location = location;
+                Opacity = 1.0;
+            }
+
+            if (!Visible)
+                base.Show();
+
             BringToFront();
             Activate();
 
             if (IsHandleCreated)
                 SetForegroundWindow(Handle);
+
+            if (ShouldAnimatePopup())
+                StartPopupEnterAnimation(location);
+        }
+
+        public void HideAnimated()
+        {
+            if (!Visible)
+                return;
+
+            if (!ShouldAnimatePopup())
+            {
+                StopPopupAnimation();
+                Opacity = 1.0;
+                base.Hide();
+                return;
+            }
+
+            StartPopupExitAnimation();
+        }
+
+        private void StartPopupEnterAnimation(Point targetLocation)
+        {
+            popupAnimation = PopupAnimation.CreateEnter(
+                Location,
+                targetLocation,
+                ScaleLayout(PopupEnterOvershoot),
+                PopupEnterDuration);
+            StartPopupAnimationTimer();
+        }
+
+        private void StartPopupExitAnimation()
+        {
+            if (popupAnimation != null && popupAnimation.HideWhenComplete)
+                return;
+
+            popupAnimation = PopupAnimation.CreateExit(
+                Location,
+                new Point(Location.X, Location.Y + ScaleLayout(PopupExitOffset)),
+                Opacity,
+                PopupExitDuration);
+            StartPopupAnimationTimer();
+        }
+
+        private void StartPopupAnimationTimer()
+        {
+            if (popupAnimationTimer == null)
+            {
+                popupAnimationTimer = new System.Windows.Forms.Timer { Interval = 15 };
+                popupAnimationTimer.Tick += OnPopupAnimationTick;
+            }
+
+            popupAnimationTimer.Stop();
+            popupAnimationTimer.Start();
+        }
+
+        private void OnPopupAnimationTick(object sender, EventArgs e)
+        {
+            if (popupAnimation == null)
+                return;
+
+            var progress = Clamp01((DateTime.UtcNow - popupAnimation.StartedAt).TotalMilliseconds / popupAnimation.Duration);
+
+            if (popupAnimation.HideWhenComplete)
+            {
+                var eased = EaseInCubic(progress);
+                Location = new Point(
+                    popupAnimation.StartLocation.X,
+                    Lerp(popupAnimation.StartLocation.Y, popupAnimation.TargetLocation.Y, eased));
+                Opacity = Math.Max(0.0, popupAnimation.StartOpacity * (1.0 - eased));
+            }
+            else
+            {
+                Location = new Point(popupAnimation.TargetLocation.X, GetEnterAnimationTop(popupAnimation, progress));
+                Opacity = EaseOutCubic(Clamp01(progress / 0.55));
+            }
+
+            if (progress < 1.0)
+                return;
+
+            CompletePopupAnimation();
+        }
+
+        private int GetEnterAnimationTop(PopupAnimation animation, double progress)
+        {
+            var overshootTop = animation.TargetLocation.Y - animation.Overshoot;
+
+            if (progress < 0.72)
+            {
+                var eased = EaseOutCubic(progress / 0.72);
+                return Lerp(animation.StartLocation.Y, overshootTop, eased);
+            }
+
+            return Lerp(overshootTop, animation.TargetLocation.Y, EaseOutCubic((progress - 0.72) / 0.28));
+        }
+
+        private void CompletePopupAnimation()
+        {
+            var animation = popupAnimation;
+            StopPopupAnimation();
+
+            if (animation.HideWhenComplete)
+            {
+                Location = animation.StartLocation;
+                Opacity = 1.0;
+                base.Hide();
+            }
+            else
+            {
+                Location = animation.TargetLocation;
+                Opacity = 1.0;
+            }
+        }
+
+        private void StopPopupAnimation()
+        {
+            if (popupAnimationTimer != null)
+                popupAnimationTimer.Stop();
+
+            popupAnimation = null;
+        }
+
+        private static bool ShouldAnimatePopup()
+        {
+            var enabled = true;
+            return !SystemParametersInfo(SPI_GETUIEFFECTS, 0, ref enabled, 0) || enabled;
+        }
+
+        private static int Lerp(int start, int end, double progress)
+        {
+            return (int)Math.Round(start + (end - start) * progress);
+        }
+
+        private static double EaseOutCubic(double progress)
+        {
+            progress = Clamp01(progress);
+            var inverse = 1.0 - progress;
+            return 1.0 - inverse * inverse * inverse;
+        }
+
+        private static double EaseInCubic(double progress)
+        {
+            progress = Clamp01(progress);
+            return progress * progress * progress;
+        }
+
+        private static double Clamp01(double value)
+        {
+            if (value < 0.0)
+                return 0.0;
+
+            if (value > 1.0)
+                return 1.0;
+
+            return value;
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            StopPopupAnimation();
+
+            if (popupAnimationTimer != null)
+            {
+                popupAnimationTimer.Dispose();
+                popupAnimationTimer = null;
+            }
+
+            base.OnFormClosed(e);
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
@@ -763,6 +954,49 @@ namespace Tomighty.Windows.Timer
             }
         }
 
+        private class PopupAnimation
+        {
+            private PopupAnimation()
+            {
+            }
+
+            public Point StartLocation { get; private set; }
+            public Point TargetLocation { get; private set; }
+            public DateTime StartedAt { get; private set; }
+            public double StartOpacity { get; private set; }
+            public double Duration { get; private set; }
+            public int Overshoot { get; private set; }
+            public bool HideWhenComplete { get; private set; }
+
+            public static PopupAnimation CreateEnter(Point startLocation, Point targetLocation, int overshoot, int duration)
+            {
+                return new PopupAnimation
+                {
+                    StartLocation = startLocation,
+                    TargetLocation = targetLocation,
+                    StartedAt = DateTime.UtcNow,
+                    StartOpacity = 0.0,
+                    Duration = duration,
+                    Overshoot = overshoot,
+                    HideWhenComplete = false
+                };
+            }
+
+            public static PopupAnimation CreateExit(Point startLocation, Point targetLocation, double startOpacity, int duration)
+            {
+                return new PopupAnimation
+                {
+                    StartLocation = startLocation,
+                    TargetLocation = targetLocation,
+                    StartedAt = DateTime.UtcNow,
+                    StartOpacity = startOpacity,
+                    Duration = duration,
+                    Overshoot = 0,
+                    HideWhenComplete = true
+                };
+            }
+        }
+
         private class TransparentLabel : Label
         {
             private const int WM_NCHITTEST = 0x0084;
@@ -1125,5 +1359,8 @@ namespace Tomighty.Windows.Timer
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref bool pvParam, uint fWinIni);
     }
 }

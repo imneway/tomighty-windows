@@ -122,7 +122,7 @@ namespace Tomighty.Windows.Timer
             if (window.Visible)
             {
                 if (CanAutoHideWindow)
-                    window.Hide();
+                    window.HideAnimated();
             }
             else
             {
@@ -246,7 +246,7 @@ namespace Tomighty.Windows.Timer
         {
             requiresManualClose = false;
             completionAlertPending = false;
-            window.Hide();
+            window.HideAnimated();
             IsPinned = false;
         }
 
@@ -259,7 +259,7 @@ namespace Tomighty.Windows.Timer
         private void OnLostFocus(object sender, System.EventArgs e)
         {
             if (ShouldAutoHideWindow())
-                window.Hide();
+                window.HideAnimated();
         }
 
         private void OnWindowDeactivate(object sender, System.EventArgs e)
@@ -267,7 +267,7 @@ namespace Tomighty.Windows.Timer
             if (ShouldAutoHideWindow())
             {
                 lastDeactivateHideTime = DateTime.UtcNow;
-                window.Hide();
+                window.HideAnimated();
             }
         }
 
@@ -277,7 +277,7 @@ namespace Tomighty.Windows.Timer
                 return;
 
             lastDeactivateHideTime = DateTime.UtcNow;
-            window.Hide();
+            window.HideAnimated();
         }
 
         private bool WasJustHiddenByDeactivation()
