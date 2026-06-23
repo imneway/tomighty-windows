@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using Tomighty.Events;
+using Tomighty.Windows.Notifications;
 using Tomighty.Windows.Timer;
 
 namespace Tomighty.Tools
@@ -18,9 +19,9 @@ namespace Tomighty.Tools
         [STAThread]
         private static int Main(string[] args)
         {
-            if (args.Length != 1)
+            if (args.Length < 1 || args.Length > 2)
             {
-                Console.Error.WriteLine("Usage: TrayRuntimeSmokeHost.exe <output-directory>");
+                Console.Error.WriteLine("Usage: TrayRuntimeSmokeHost.exe <output-directory> [--sound]");
                 return 2;
             }
 
@@ -29,12 +30,29 @@ namespace Tomighty.Tools
             Application.SetCompatibleTextRenderingDefault(false);
 
             var outputDirectory = args[0];
+            var playSound = args.Length == 2 && string.Equals(args[1], "--sound", StringComparison.OrdinalIgnoreCase);
             System.IO.Directory.CreateDirectory(outputDirectory);
 
             var eventHub = new SynchronousEventHub();
             var timer = new Tomighty.Timer(eventHub);
-            var preferences = new SmokeUserPreferences();
+            var preferences = new SmokeUserPreferences(playSound);
             var engine = new PomodoroEngine(timer, preferences, eventHub);
+            var completedIntervalWasObserved = false;
+            eventHub.Subscribe<TimerStopped>(@event =>
+            {
+                if (@event.IsIntervalCompleted)
+                {
+                    completedIntervalWasObserved = true;
+                    System.IO.File.WriteAllText(
+                        System.IO.Path.Combine(outputDirectory, "completion-event.txt"),
+                        $"interval={@event.IntervalType}{Environment.NewLine}remaining={@event.RemainingTime.Seconds}{Environment.NewLine}sound={playSound}");
+                }
+            });
+
+            var soundPlayer = playSound
+                ? new SoundNotificationPlayer(preferences, eventHub)
+                : null;
+
             using (var container = new Container())
             using (var notifyIcon = new NotifyIcon(container))
             {
@@ -53,12 +71,16 @@ namespace Tomighty.Tools
                     SaveNotifyIconEvidence(notifyIcon, outputDirectory, "02-countdown");
 
                     PumpUi((RuntimePomodoroSeconds + 1) * 1000);
+                    if (!completedIntervalWasObserved)
+                        throw new InvalidOperationException("Completed timer event was not observed.");
+
                     AssertCompletionWindowBehavior(presenter);
                 }
                 finally
                 {
                     notifyIcon.Visible = false;
                     (trayIconController as IDisposable)?.Dispose();
+                    GC.KeepAlive(soundPlayer);
                 }
             }
 
@@ -253,6 +275,13 @@ namespace Tomighty.Tools
 
         private sealed class SmokeUserPreferences : IUserPreferences
         {
+            private readonly bool playSoundNotifications;
+
+            public SmokeUserPreferences(bool playSoundNotifications)
+            {
+                this.playSoundNotifications = playSoundNotifications;
+            }
+
             public Duration GetIntervalDuration(IntervalType intervalType)
             {
                 if (intervalType == IntervalType.Pomodoro) return new Duration(RuntimePomodoroSeconds);
@@ -263,7 +292,7 @@ namespace Tomighty.Tools
 
             public int MaxPomodoroCount => 4;
             public bool ShowToastNotifications => false;
-            public bool PlaySoundNotifications => false;
+            public bool PlaySoundNotifications => playSoundNotifications;
             public bool ShowRemainingTimeOnTray => true;
             public bool SuppressPopupInFullscreenApps => true;
             public bool AutoUpdate => false;

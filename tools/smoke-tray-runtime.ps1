@@ -1,6 +1,7 @@
 param (
     [string]$Configuration = "Debug",
-    [string]$OutputDirectory = ""
+    [string]$OutputDirectory = "",
+    [switch]$Sound
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,6 +14,9 @@ $hostExe = Join-Path $appOutput "TrayRuntimeSmokeHost.exe"
 
 if (-not $OutputDirectory) {
     $OutputDirectory = Join-Path $buildOutput "tray-runtime-smoke"
+}
+else {
+    $OutputDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 }
 
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
@@ -44,7 +48,13 @@ if ($LASTEXITCODE -ne 0) {
 
 Push-Location $appOutput
 try {
-    & $hostExe $OutputDirectory
+    if ($Sound) {
+        & $hostExe $OutputDirectory "--sound"
+    }
+    else {
+        & $hostExe $OutputDirectory
+    }
+
     if ($LASTEXITCODE -ne 0) {
         throw "TrayRuntimeSmokeHost failed with exit code $LASTEXITCODE."
     }
