@@ -68,6 +68,15 @@ namespace Tomighty.Windows.Properties {
                 return ResourceManager.GetStream("audio_deskbell", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized resource of type System.IO.UnmanagedMemoryStream similar to System.IO.MemoryStream.
+        /// </summary>
+        internal static System.IO.UnmanagedMemoryStream audio_windup {
+            get {
+                return ResourceManager.GetStream("audio_windup", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).

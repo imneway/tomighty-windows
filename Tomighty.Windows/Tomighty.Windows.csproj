@@ -184,7 +184,9 @@
     <None Include="Resources\icon_tomato_green.ico" />
     <None Include="Resources\icon_tomato_red.ico" />
     <None Include="Resources\icon_tomato_white.ico" />
+    <Content Include="Resources\Audio\deskbell-loud.wav" />
     <Content Include="Resources\Audio\deskbell.wav" />
+    <Content Include="Resources\Audio\tomatobar-windup.wav" />
     <Content Include="Resources\image_warning.png" />
     <Content Include="Resources\image_clock.tiff" />
     <Content Include="Resources\image_tomato_black.tiff" />

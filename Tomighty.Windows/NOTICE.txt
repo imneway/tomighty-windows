@@ -13,3 +13,8 @@
    Tomato icon designed by José Campos <www.thenounproject.com/jcampos>
 
    Clock icon designed by Thomas Le Bas <www.thenounproject.com/tlb>
+
+   Personal beta note: tomatobar-windup.wav was copied from ivoronin/TomatoBar
+   for local personal use only. TomatoBar documents its timer sounds as
+   licensed from buddhabeats. Do not redistribute this build with that sound
+   without obtaining appropriate rights.
