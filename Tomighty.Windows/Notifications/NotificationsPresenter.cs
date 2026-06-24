@@ -22,7 +22,6 @@ namespace Tomighty.Windows.Notifications
             this.pomodoroEngine = pomodoroEngine;
             this.userPreferences = userPreferences;
             eventHub.Subscribe<TimerStopped>(OnTimerStopped);
-            eventHub.Subscribe<AppUpdated>(OnAppUpdated);
             eventHub.Subscribe<FirstRun>(OnFirstRun);
         }
 
@@ -30,11 +29,6 @@ namespace Tomighty.Windows.Notifications
         {
             var toast = Toasts.FirstRun();
             toastNotifier.Show(toast);
-        }
-
-        private void OnAppUpdated(AppUpdated @event)
-        {
-            toastNotifier.Show(Toasts.AppUpdated());
         }
 
         private void OnTimerStopped(TimerStopped @event)

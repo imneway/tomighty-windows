@@ -11,7 +11,7 @@
   - `Tomighty.Core`：番茄钟核心逻辑、事件、计时器、偏好设置接口
   - `Tomighty.Core.Test`：基于 NUnit 的核心行为测试
   - `Tomighty.Windows`：托盘应用、WinForms 计时窗口、偏好设置、通知
-  - `Tomighty.Update.Swap`：旧版自动更新辅助程序
+  - `Tomighty.Update.Swap`: removed legacy auto-update swap helper
 
 ## 当前架构判断
 

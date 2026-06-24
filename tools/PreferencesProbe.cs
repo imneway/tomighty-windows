@@ -21,7 +21,6 @@ namespace Tomighty.Tools
                     values.PlaySoundNotifications = false;
                     values.ShowRemainingTimeOnTray = true;
                     values.SuppressPopupInFullscreenApps = true;
-                    values.AutoUpdate = false;
                 });
             }
 

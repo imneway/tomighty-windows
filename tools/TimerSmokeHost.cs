@@ -928,7 +928,6 @@ namespace Tomighty.Tools
             public bool PlaySoundNotifications => false;
             public bool ShowRemainingTimeOnTray => true;
             public bool SuppressPopupInFullscreenApps { get; set; } = true;
-            public bool AutoUpdate => false;
 
             public void Update(Action<IMutableUserPreferences> action)
             {

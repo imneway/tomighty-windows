@@ -17,7 +17,6 @@ namespace Tomighty
         bool PlaySoundNotifications { get; }
         bool ShowRemainingTimeOnTray { get; }
         bool SuppressPopupInFullscreenApps { get; }
-        bool AutoUpdate { get; }
 
         void Update(Action<IMutableUserPreferences> action);
     }

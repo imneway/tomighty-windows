@@ -89,7 +89,6 @@
       <DependentUpon>AboutWindow.cs</DependentUpon>
     </Compile>
     <Compile Include="About\AboutWindowPresenter.cs" />
-    <Compile Include="AutoUpdate.cs" />
     <Compile Include="Directories.cs" />
     <Compile Include="ErrorReportWindow.cs">
       <SubType>Form</SubType>
@@ -207,9 +206,6 @@
     <None Include="Resources\image_unpinned.png" />
     <None Include="Resources\image_pinned.png" />
     <None Include="Resources\image_x.png" />
-    <Content Include="Resources\Toasts\app-updated.xml">
-      <SubType>Designer</SubType>
-    </Content>
     <Content Include="Resources\Toasts\first-run.xml">
       <SubType>Designer</SubType>
     </Content>

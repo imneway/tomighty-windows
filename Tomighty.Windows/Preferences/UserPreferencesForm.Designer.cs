@@ -60,7 +60,6 @@ namespace Tomighty.Windows.Preferences
             this.startWithWindows = new System.Windows.Forms.CheckBox();
             this.showRemainingTimeOnTray = new System.Windows.Forms.CheckBox();
             this.suppressPopupInFullscreenApps = new System.Windows.Forms.CheckBox();
-            this.autoupdate = new System.Windows.Forms.CheckBox();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.longBreakDurationTextBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.shortBreakDurationTextBox)).BeginInit();
@@ -356,7 +355,6 @@ namespace Tomighty.Windows.Preferences
             //
             this.tabPage3.Controls.Add(this.startWithWindows);
             this.tabPage3.Controls.Add(this.suppressPopupInFullscreenApps);
-            this.tabPage3.Controls.Add(this.autoupdate);
             this.tabPage3.Controls.Add(this.showRemainingTimeOnTray);
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
             this.tabPage3.Name = "tabPage3";
@@ -395,17 +393,6 @@ namespace Tomighty.Windows.Preferences
             this.suppressPopupInFullscreenApps.TabIndex = 2;
             this.suppressPopupInFullscreenApps.Text = "Hide timer popup while fullscreen apps are active";
             this.suppressPopupInFullscreenApps.UseVisualStyleBackColor = true;
-            // 
-            // autoupdate
-            // 
-            this.autoupdate.AutoSize = true;
-            this.autoupdate.Location = new System.Drawing.Point(14, 83);
-            this.autoupdate.Name = "autoupdate";
-            this.autoupdate.Size = new System.Drawing.Size(228, 17);
-            this.autoupdate.TabIndex = 3;
-            this.autoupdate.Text = "Automatically download and install updates";
-            this.autoupdate.UseVisualStyleBackColor = true;
-            // 
             // UserPreferencesForm
             // 
             this.AcceptButton = this.okButton;
@@ -467,6 +454,5 @@ namespace Tomighty.Windows.Preferences
         private System.Windows.Forms.CheckBox startWithWindows;
         private System.Windows.Forms.CheckBox showRemainingTimeOnTray;
         private System.Windows.Forms.CheckBox suppressPopupInFullscreenApps;
-        private System.Windows.Forms.CheckBox autoupdate;
     }
 }

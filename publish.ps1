@@ -138,7 +138,6 @@ $msbuild = Find-MSBuild
 & $msbuild $solution /t:Rebuild /p:Configuration=$Configuration
 
 $appOutput = Join-Path $root "Tomighty.Windows\bin\$Configuration"
-$swapOutput = Join-Path $root "Tomighty.Update.Swap\bin\$Configuration"
 $appExe = Join-Path $appOutput "Tomighty.Windows.exe"
 $version = (Get-Item $appExe).VersionInfo.FileVersion
 
@@ -179,7 +178,6 @@ Copy-Item (Join-Path $appOutput "Tomighty.Windows.exe") $artifactDir -Force
 Copy-Item (Join-Path $appOutput "Tomighty.Windows.exe.config") $artifactDir -Force
 Copy-Item (Join-Path $appOutput "Tomighty.Core.dll") $artifactDir -Force
 Copy-IfExists (Join-Path $appOutput "Microsoft.Toolkit.Uwp.Notifications.dll") $artifactDir
-Copy-IfExists (Join-Path $swapOutput "Tomighty.Update.Swap.exe") $artifactDir
 Copy-Item (Join-Path $appOutput "Resources") (Join-Path $artifactDir "Resources") -Recurse -Force
 
 if ($Mode -eq "All" -or $Mode -eq "Zip") {

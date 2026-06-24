@@ -28,7 +28,6 @@ namespace Tomighty.Windows.Preferences
             soundNotifications.Checked = userPreferences.PlaySoundNotifications;
             showRemainingTimeOnTray.Checked = userPreferences.ShowRemainingTimeOnTray;
             suppressPopupInFullscreenApps.Checked = userPreferences.SuppressPopupInFullscreenApps;
-            autoupdate.Checked = userPreferences.AutoUpdate;
             startWithWindows.Checked = StartupRegistration.IsEnabled;
 
             ModernTheme.ApplyMicaDialog(this);
@@ -52,7 +51,6 @@ namespace Tomighty.Windows.Preferences
                 newPreferences.PlaySoundNotifications = soundNotifications.Checked;
                 newPreferences.ShowRemainingTimeOnTray = showRemainingTimeOnTray.Checked;
                 newPreferences.SuppressPopupInFullscreenApps = suppressPopupInFullscreenApps.Checked;
-                newPreferences.AutoUpdate = autoupdate.Checked;
             });
             StartupRegistration.SetEnabled(startWithWindows.Checked);
 

@@ -60,8 +60,7 @@ namespace Tomighty.Windows.Preferences
             ShowToastNotifications = true,
             PlaySoundNotifications = true,
             ShowRemainingTimeOnTray = true,
-            SuppressPopupInFullscreenApps = true,
-            AutoUpdate = true
+            SuppressPopupInFullscreenApps = true
         };
 
         public Duration GetIntervalDuration(IntervalType intervalType)
@@ -110,12 +109,6 @@ namespace Tomighty.Windows.Preferences
             set { values.SuppressPopupInFullscreenApps = value; }
         }
         
-        public bool AutoUpdate
-        {
-            get { return values.AutoUpdate; }
-            set { values.AutoUpdate = value; }
-        }
-
         public void Update(Action<IMutableUserPreferences> action)
         {
             action(this);
@@ -136,7 +129,6 @@ namespace Tomighty.Windows.Preferences
             [DataMember] public bool PlaySoundNotifications { get; set; }
             [DataMember] public bool? ShowRemainingTimeOnTray { get; set; }
             [DataMember] public bool? SuppressPopupInFullscreenApps { get; set; }
-            [DataMember] public bool AutoUpdate { get; set; }
         }
     }
 }
