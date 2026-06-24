@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -37,14 +38,14 @@ namespace Tomighty.Tools
             var timer = new Tomighty.Timer(eventHub);
             var preferences = new SmokeUserPreferences(playSound);
             var engine = new PomodoroEngine(timer, preferences, eventHub);
-            var completedIntervalWasObserved = false;
+            var completedIntervals = new List<IntervalType>();
             eventHub.Subscribe<TimerStopped>(@event =>
             {
                 if (@event.IsIntervalCompleted)
                 {
-                    completedIntervalWasObserved = true;
+                    completedIntervals.Add(@event.IntervalType);
                     System.IO.File.WriteAllText(
-                        System.IO.Path.Combine(outputDirectory, "completion-event.txt"),
+                        System.IO.Path.Combine(outputDirectory, $"{@event.IntervalType}-completion-event.txt"),
                         $"interval={@event.IntervalType}{Environment.NewLine}remaining={@event.RemainingTime.Seconds}{Environment.NewLine}sound={playSound}");
                 }
             });
@@ -71,10 +72,14 @@ namespace Tomighty.Tools
                     SaveNotifyIconEvidence(notifyIcon, outputDirectory, "02-countdown");
 
                     PumpUi((RuntimePomodoroSeconds + 1) * 1000);
-                    if (!completedIntervalWasObserved)
-                        throw new InvalidOperationException("Completed timer event was not observed.");
+                    if (!completedIntervals.Contains(IntervalType.Pomodoro))
+                        throw new InvalidOperationException("Completed pomodoro event was not observed.");
 
                     AssertCompletionWindowBehavior(presenter);
+
+                    PumpUi(11000);
+                    if (!completedIntervals.Contains(IntervalType.ShortBreak))
+                        throw new InvalidOperationException("Completed short break event was not observed.");
                 }
                 finally
                 {

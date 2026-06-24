@@ -1,4 +1,8 @@
-﻿using System.Media;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Media;
+using System.Threading;
 using Tomighty.Events;
 
 namespace Tomighty.Windows.Notifications
@@ -6,8 +10,6 @@ namespace Tomighty.Windows.Notifications
     public class SoundNotificationPlayer
     {
         private readonly IUserPreferences userPreferences;
-        private readonly SoundPlayer intervalCompletedNotification = new SoundPlayer(Properties.Resources.audio_deskbell);
-        private readonly SoundPlayer timerStartedNotification = new SoundPlayer(Properties.Resources.audio_windup);
 
         public SoundNotificationPlayer(IUserPreferences userPreferences, IEventHub eventHub)
         {
@@ -20,7 +22,7 @@ namespace Tomighty.Windows.Notifications
         {
             if (userPreferences.PlaySoundNotifications)
             {
-                timerStartedNotification.Play();
+                PlaySound(() => Properties.Resources.audio_windup);
             }
         }
 
@@ -28,8 +30,28 @@ namespace Tomighty.Windows.Notifications
         {
             if (@event.IsIntervalCompleted && userPreferences.PlaySoundNotifications)
             {
-                intervalCompletedNotification.Play();
+                PlaySound(() => Properties.Resources.audio_deskbell);
             }
+        }
+
+        private static void PlaySound(Func<Stream> openStream)
+        {
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    using (var stream = openStream())
+                    using (var player = new SoundPlayer(stream))
+                    {
+                        player.Load();
+                        player.PlaySync();
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Debug.WriteLine(exception);
+                }
+            });
         }
     }
 }
