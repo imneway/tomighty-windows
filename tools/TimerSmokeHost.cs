@@ -22,6 +22,8 @@ namespace Tomighty.Tools
         private static Color ActionButtonTextColor => GetModernThemeColor("ActionButtonTextColor");
         private static Color TextColor => GetModernThemeColor("TextColor");
         private static Color TimerTextColor => GetModernThemeColor("TimerTextColor");
+        private const int MouseEventLeftDown = 0x0002;
+        private const int MouseEventLeftUp = 0x0004;
 
         [STAThread]
         private static int Main(string[] args)
@@ -62,7 +64,7 @@ namespace Tomighty.Tools
                 AssertDpiRefreshResetsTitleOnlyLayout(backdrop);
                 AssertAllStatesSurviveDpiRoundTrip(backdrop);
                 AssertCompletionAlertWaitsForFullscreenExit(backdrop);
-                AssertTrayAnchoredPopupPlacement();
+                AssertTrayAnchoredPopupPlacement(backdrop);
                 SetThemeOverride(null);
                 backdrop.Close();
             }
@@ -501,7 +503,7 @@ namespace Tomighty.Tools
             window.Close();
         }
 
-        private static void AssertTrayAnchoredPopupPlacement()
+        private static void AssertTrayAnchoredPopupPlacement(ProbeBackdropForm backdrop)
         {
             SetThemeOverride(true);
 
@@ -517,6 +519,15 @@ namespace Tomighty.Tools
             PumpUi();
             AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "idle");
 
+            ClickOutsideWindow(window, backdrop);
+            PumpUi();
+            if (window.Visible)
+                throw new InvalidOperationException("Regular tray popup stayed visible after an outside click.");
+
+            InvokePresenterToggle(presenter, trayIconBounds);
+            PumpUi();
+            AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "idleReopened");
+
             engine.StartTimer(IntervalType.Pomodoro);
             PumpUi();
             AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "pomodoro");
@@ -530,6 +541,26 @@ namespace Tomighty.Tools
             AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "breakFinished");
 
             window.Close();
+        }
+
+        private static void ClickOutsideWindow(TimerWindow window, ProbeBackdropForm backdrop)
+        {
+            var point = new Point(backdrop.Left + 12, backdrop.Top + 12);
+            if (window.Bounds.Contains(point))
+                point = new Point(backdrop.Right - 12, backdrop.Bottom - 12);
+
+            if (window.Bounds.Contains(point))
+                throw new InvalidOperationException("Could not find a backdrop point outside the timer window.");
+
+            LeftClick(point);
+        }
+
+        private static void LeftClick(Point point)
+        {
+            SetCursorPos(point.X, point.Y);
+            MouseEvent(MouseEventLeftDown, 0, 0, 0, UIntPtr.Zero);
+            Thread.Sleep(40);
+            MouseEvent(MouseEventLeftUp, 0, 0, 0, UIntPtr.Zero);
         }
 
         private static Rectangle CreateTrayIconBoundsForSmoke()
@@ -1115,6 +1146,12 @@ namespace Tomighty.Tools
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetCursorPos(int x, int y);
+
+        [DllImport("user32.dll", EntryPoint = "mouse_event")]
+        private static extern void MouseEvent(int dwFlags, int dx, int dy, int dwData, UIntPtr dwExtraInfo);
 
         private struct RECT
         {

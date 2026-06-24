@@ -17,6 +17,7 @@ namespace Tomighty.Windows.Timer
     internal class TimerWindowPresenter
     {
         private const int TrayPopupGap = 10;
+        private const int LeftMouseButton = 0x01;
         private static readonly TimeSpan CompletionAcknowledgementAutoHideDelay = TimeSpan.FromMilliseconds(400);
 
         private readonly ICountdownClock countdownClock;
@@ -42,6 +43,7 @@ namespace Tomighty.Windows.Timer
         private bool hasLastTrayIconBounds;
         private Rectangle lastTrayIconBounds;
         private DateTime lastDeactivateHideTime = DateTime.MinValue;
+        private DateTime windowShownTime = DateTime.MinValue;
         private DateTime completionAcknowledgedTime = DateTime.MinValue;
         private bool completionAlertPending;
 
@@ -143,6 +145,7 @@ namespace Tomighty.Windows.Timer
 
                 Point location = GetLocationAboveTrayIcon();
                 window.Show(location);
+                ResetOutsideClickTracking();
 
                 if (shouldCreateWindow)
                 {
@@ -349,7 +352,7 @@ namespace Tomighty.Windows.Timer
 
         private void HideIfFocusMovedOutside()
         {
-            if (!ShouldAutoHideWindow())
+            if (!ShouldAutoHideWindow() && !ShouldHideForOutsideMouseClick())
                 return;
 
             lastDeactivateHideTime = DateTime.UtcNow;
@@ -375,6 +378,34 @@ namespace Tomighty.Windows.Timer
                 return false;
 
             return !WindowHasForegroundFocus();
+        }
+
+        private bool ShouldHideForOutsideMouseClick()
+        {
+            if (window == null || !window.Visible || !CanAutoHideWindow || WasCompletionJustAcknowledged())
+                return false;
+
+            if ((DateTime.UtcNow - windowShownTime).TotalMilliseconds < 250)
+            {
+                ConsumeLeftMouseClick();
+                return false;
+            }
+
+            if (!ConsumeLeftMouseClick())
+                return false;
+
+            return !window.Bounds.Contains(Cursor.Position);
+        }
+
+        private void ResetOutsideClickTracking()
+        {
+            windowShownTime = DateTime.UtcNow;
+            ConsumeLeftMouseClick();
+        }
+
+        private static bool ConsumeLeftMouseClick()
+        {
+            return (GetAsyncKeyState(LeftMouseButton) & 0x0001) != 0;
         }
 
         private bool WasCompletionJustAcknowledged()
@@ -423,6 +454,9 @@ namespace Tomighty.Windows.Timer
 
         [DllImport("user32.dll")]
         private static extern int GetDpiForWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int virtualKey);
 
         private void EnsureWindow()
         {
@@ -490,6 +524,7 @@ namespace Tomighty.Windows.Timer
                 : GetCompletionAlertLocation();
 
             window.Show(location);
+            ResetOutsideClickTracking();
         }
 
         private bool ShouldSuppressCompletionAlert()
