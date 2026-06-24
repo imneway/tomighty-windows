@@ -62,6 +62,7 @@ namespace Tomighty.Tools
                 AssertDpiRefreshResetsTitleOnlyLayout(backdrop);
                 AssertAllStatesSurviveDpiRoundTrip(backdrop);
                 AssertCompletionAlertWaitsForFullscreenExit(backdrop);
+                AssertTrayAnchoredPopupPlacement();
                 SetThemeOverride(null);
                 backdrop.Close();
             }
@@ -229,8 +230,24 @@ namespace Tomighty.Tools
 
         private static void InvokePresenterToggle(object presenter, Point location)
         {
-            var method = presenter.GetType().GetMethod("Toggle", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var method = presenter.GetType().GetMethod(
+                "Toggle",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                new[] { typeof(Point) },
+                null);
             method.Invoke(presenter, new object[] { location });
+        }
+
+        private static void InvokePresenterToggle(object presenter, Rectangle trayIconBounds)
+        {
+            var method = presenter.GetType().GetMethod(
+                "Toggle",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                new[] { typeof(Rectangle) },
+                null);
+            method.Invoke(presenter, new object[] { trayIconBounds });
         }
 
         private static TimerWindow GetPresenterWindow(object presenter)
@@ -482,6 +499,69 @@ namespace Tomighty.Tools
                 throw new InvalidOperationException("Completion alert was suppressed even though the fullscreen preference is off.");
 
             window.Close();
+        }
+
+        private static void AssertTrayAnchoredPopupPlacement()
+        {
+            SetThemeOverride(true);
+
+            var eventHub = new SynchronousEventHub();
+            var timer = new Tomighty.Timer(eventHub);
+            var preferences = new SmokeUserPreferences();
+            var engine = new PomodoroEngine(timer, preferences, eventHub);
+            var presenter = CreateTimerWindowPresenter(engine, timer, eventHub, preferences);
+            var trayIconBounds = CreateTrayIconBoundsForSmoke();
+            var window = GetPresenterWindow(presenter);
+
+            InvokePresenterToggle(presenter, trayIconBounds);
+            PumpUi();
+            AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "idle");
+
+            engine.StartTimer(IntervalType.Pomodoro);
+            PumpUi();
+            AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "pomodoro");
+
+            eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
+            PumpUi();
+            AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "pomodoroFinished");
+
+            eventHub.Publish(new TimerStopped(IntervalType.ShortBreak, preferences.GetIntervalDuration(IntervalType.ShortBreak), Duration.Zero));
+            PumpUi();
+            AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "breakFinished");
+
+            window.Close();
+        }
+
+        private static Rectangle CreateTrayIconBoundsForSmoke()
+        {
+            var screenBounds = Screen.PrimaryScreen.Bounds;
+            const int width = 32;
+            const int height = 28;
+            return new Rectangle(
+                screenBounds.Left + Math.Max(120, screenBounds.Width / 2),
+                screenBounds.Bottom - 44,
+                width,
+                height);
+        }
+
+        private static void AssertWindowAnchoredToTrayIcon(TimerWindow window, Rectangle trayIconBounds, string stateName)
+        {
+            if (!window.Visible)
+                throw new InvalidOperationException(stateName + ": window is not visible.");
+
+            var expectedGap = GetScaledTrayPopupGap(window);
+            var expectedBottom = trayIconBounds.Top - expectedGap;
+            var expectedCenterX = trayIconBounds.Left + trayIconBounds.Width / 2;
+            var actualCenterX = window.Left + window.Width / 2;
+
+            AssertEqual(stateName + "TrayGap", expectedBottom, window.Bottom);
+            AssertNear(stateName + "TrayCenterX", expectedCenterX, actualCenterX, 1f);
+        }
+
+        private static int GetScaledTrayPopupGap(TimerWindow window)
+        {
+            var dpi = Math.Max(96u, GetDpiForWindow(window.Handle));
+            return Math.Max(1, (int)Math.Round(10 * dpi / 96.0));
         }
 
         private static void AssertStateAtDpiScale(TimerWindow window, TimerStateShot shot, float scale)

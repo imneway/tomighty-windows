@@ -133,10 +133,7 @@ namespace Tomighty.Windows.Timer
 
         public void UpdateTitle(string text)
         {
-            if (IsHandleCreated)
-                BeginInvoke(UpdateTitleDelegate, text);
-            else
-                UpdateTitleDelegate(text);
+            ExecuteOnWindowThread(() => UpdateTitleDelegate(text));
         }
 
         public void SetTimerAction(string text, Action action)
@@ -146,42 +143,35 @@ namespace Tomighty.Windows.Timer
 
         public void SetTimerAction(string text, Action action, Color color)
         {
-            if (IsHandleCreated)
-                BeginInvoke(new Action(() => ApplyTimerActions(text, action, color, "", null, ModernTheme.NeutralActionButtonBackColor, "")));
-            else
-                ApplyTimerActions(text, action, color, "", null, ModernTheme.NeutralActionButtonBackColor, "");
+            ExecuteOnWindowThread(() => ApplyTimerActions(text, action, color, "", null, ModernTheme.NeutralActionButtonBackColor, ""));
         }
 
         public void SetTimerActions(string primaryText, Action primaryAction, Color primaryColor, string secondaryText, Action secondaryAction, Color secondaryColor)
         {
-            if (IsHandleCreated)
-                BeginInvoke(new Action(() => ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor, "")));
-            else
-                ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor, "");
+            ExecuteOnWindowThread(() => ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor, ""));
         }
 
         public void SetTimerMessageActions(string message, string primaryText, Action primaryAction, Color primaryColor, string secondaryText, Action secondaryAction, Color secondaryColor)
         {
-            if (IsHandleCreated)
-                BeginInvoke(new Action(() => ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor, message)));
-            else
-                ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor, message);
+            ExecuteOnWindowThread(() => ApplyTimerActions(primaryText, primaryAction, primaryColor, secondaryText, secondaryAction, secondaryColor, message));
         }
 
         public void UpdateTimeDisplay(string text)
         {
-            if (IsHandleCreated)
-                BeginInvoke(UpdateTimeDisplayDelegate, text);
-            else
-                UpdateTimeDisplayDelegate(text);
+            ExecuteOnWindowThread(() => UpdateTimeDisplayDelegate(text));
         }
 
         public void HideTimeDisplay()
         {
-            if (IsHandleCreated)
-                BeginInvoke(new Action(ApplyHiddenTimeDisplay));
+            ExecuteOnWindowThread(ApplyHiddenTimeDisplay);
+        }
+
+        private void ExecuteOnWindowThread(Action action)
+        {
+            if (IsHandleCreated && InvokeRequired)
+                BeginInvoke(action);
             else
-                ApplyHiddenTimeDisplay();
+                action();
         }
 
         public void UpdateColorScheme(Color color)
@@ -279,8 +269,9 @@ namespace Tomighty.Windows.Timer
         {
             TopMost = true;
             StopPopupAnimation();
+            var wasVisible = Visible;
 
-            if (ShouldAnimatePopup())
+            if (!wasVisible && ShouldAnimatePopup())
             {
                 var offset = ScaleLayout(PopupEnterOffset);
                 Location = new Point(location.X, location.Y + offset);
@@ -292,7 +283,7 @@ namespace Tomighty.Windows.Timer
                 Opacity = 1.0;
             }
 
-            if (!Visible)
+            if (!wasVisible)
                 base.Show();
 
             BringToFront();
@@ -301,7 +292,7 @@ namespace Tomighty.Windows.Timer
             if (IsHandleCreated)
                 SetForegroundWindow(Handle);
 
-            if (ShouldAnimatePopup())
+            if (!wasVisible && ShouldAnimatePopup())
                 StartPopupEnterAnimation(location);
         }
 

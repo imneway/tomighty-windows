@@ -16,7 +16,7 @@ namespace Tomighty.Windows.Timer
 {
     internal class TimerWindowPresenter
     {
-        private const int TrayPopupGap = 8;
+        private const int TrayPopupGap = 10;
         private static readonly TimeSpan CompletionAcknowledgementAutoHideDelay = TimeSpan.FromMilliseconds(400);
 
         private readonly ICountdownClock countdownClock;
@@ -39,6 +39,8 @@ namespace Tomighty.Windows.Timer
         private bool requiresManualClose;
         private bool hasLastTrayIconCenter;
         private Point lastTrayIconCenter;
+        private bool hasLastTrayIconBounds;
+        private Rectangle lastTrayIconBounds;
         private DateTime lastDeactivateHideTime = DateTime.MinValue;
         private DateTime completionAcknowledgedTime = DateTime.MinValue;
         private bool completionAlertPending;
@@ -108,7 +110,17 @@ namespace Tomighty.Windows.Timer
         public void Toggle(Point approximateLocation)
         {
             RememberTrayIconCenter(approximateLocation);
+            ToggleAtTrayAnchor();
+        }
 
+        public void Toggle(Rectangle trayIconBounds)
+        {
+            RememberTrayIconBounds(trayIconBounds);
+            ToggleAtTrayAnchor();
+        }
+
+        private void ToggleAtTrayAnchor()
+        {
             var shouldCreateWindow = window == null;
 
             if (shouldCreateWindow)
@@ -129,7 +141,7 @@ namespace Tomighty.Windows.Timer
                 if (!window.IsHandleCreated && window.Handle == IntPtr.Zero)
                     return;
 
-                Point location = GetLocationAboveTrayIcon(approximateLocation);
+                Point location = GetLocationAboveTrayIcon();
                 window.Show(location);
 
                 if (shouldCreateWindow)
@@ -176,6 +188,21 @@ namespace Tomighty.Windows.Timer
         {
             lastTrayIconCenter = location;
             hasLastTrayIconCenter = true;
+            hasLastTrayIconBounds = false;
+        }
+
+        public void RememberTrayIconBounds(Rectangle bounds)
+        {
+            if (bounds.Width <= 0 || bounds.Height <= 0)
+            {
+                RememberTrayIconCenter(bounds.Location);
+                return;
+            }
+
+            lastTrayIconBounds = bounds;
+            lastTrayIconCenter = GetBoundsCenter(bounds);
+            hasLastTrayIconBounds = true;
+            hasLastTrayIconCenter = true;
         }
 
         private void OnTimeElapsed(TimeElapsed @event)
@@ -192,6 +219,7 @@ namespace Tomighty.Windows.Timer
             {
                 currentState = newState;
                 currentState.Apply(window, remainingTime);
+                RepositionVisibleWindowAboveTrayIcon();
             }
         }
 
@@ -218,23 +246,71 @@ namespace Tomighty.Windows.Timer
             throw new ArgumentException($"Unknown interval type: {intervalType}");
         }
 
-        private Point GetLocationAboveTrayIcon(Point approximateLocation)
+        private Point GetLocationAboveTrayIcon()
         {
-            var screen = Screen.FromPoint(approximateLocation);
-            var workingArea = screen.WorkingArea;
-            var trayIconSize = Math.Max(16, SystemInformation.SmallIconSize.Height);
+            Rectangle trayIconBounds;
+            Point trayIconCenter;
 
-            var x = approximateLocation.X - window.Width / 2;
-            var y = approximateLocation.Y - trayIconSize / 2 - TrayPopupGap - window.Height;
+            if (hasLastTrayIconBounds)
+            {
+                trayIconBounds = lastTrayIconBounds;
+                trayIconCenter = GetBoundsCenter(trayIconBounds);
+            }
+            else
+            {
+                trayIconCenter = hasLastTrayIconCenter ? lastTrayIconCenter : Cursor.Position;
+                var trayIconSize = Math.Max(16, SystemInformation.SmallIconSize.Height);
+                trayIconBounds = new Rectangle(
+                    trayIconCenter.X - trayIconSize / 2,
+                    trayIconCenter.Y - trayIconSize / 2,
+                    trayIconSize,
+                    trayIconSize);
+            }
 
-            x = Math.Max(workingArea.Left + TrayPopupGap, Math.Min(x, workingArea.Right - window.Width - TrayPopupGap));
+            var screen = Screen.FromPoint(trayIconCenter);
+            var screenBounds = screen.Bounds;
+            var gap = GetScaledTrayPopupGap();
 
-            if (y < workingArea.Top + TrayPopupGap)
-                y = approximateLocation.Y + trayIconSize / 2 + TrayPopupGap;
+            var x = trayIconCenter.X - window.Width / 2;
+            var y = trayIconBounds.Top - gap - window.Height;
 
-            y = Math.Max(workingArea.Top + TrayPopupGap, Math.Min(y, workingArea.Bottom - window.Height - TrayPopupGap));
+            x = Math.Max(screenBounds.Left + gap, Math.Min(x, screenBounds.Right - window.Width - gap));
+
+            if (y < screenBounds.Top + gap)
+                y = trayIconBounds.Bottom + gap;
+
+            y = Math.Max(screenBounds.Top + gap, Math.Min(y, screenBounds.Bottom - window.Height - gap));
 
             return new Point(x, y);
+        }
+
+        private void RepositionVisibleWindowAboveTrayIcon()
+        {
+            if (window == null || !window.Visible || IsPinned || (!hasLastTrayIconCenter && !hasLastTrayIconBounds))
+                return;
+
+            window.Location = GetLocationAboveTrayIcon();
+        }
+
+        private int GetScaledTrayPopupGap()
+        {
+            var dpi = 96;
+
+            try
+            {
+                if (window != null && window.IsHandleCreated)
+                    dpi = Math.Max(96, GetDpiForWindow(window.Handle));
+            }
+            catch
+            {
+            }
+
+            return Math.Max(1, (int)Math.Round(TrayPopupGap * dpi / 96.0));
+        }
+
+        private static Point GetBoundsCenter(Rectangle bounds)
+        {
+            return new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
         }
 
         private void OnPinButtonClick(object sender, System.EventArgs e)
@@ -345,6 +421,9 @@ namespace Tomighty.Windows.Timer
         [DllImport("user32.dll")]
         private static extern bool IsChild(IntPtr hWndParent, IntPtr hWnd);
 
+        [DllImport("user32.dll")]
+        private static extern int GetDpiForWindow(IntPtr hWnd);
+
         private void EnsureWindow()
         {
             if (window == null)
@@ -406,7 +485,7 @@ namespace Tomighty.Windows.Timer
 
         private void ShowCompletionAlertNow()
         {
-            var location = window.Visible
+            var location = window.Visible && IsPinned
                 ? window.Location
                 : GetCompletionAlertLocation();
 
@@ -436,8 +515,8 @@ namespace Tomighty.Windows.Timer
 
         private Point GetCompletionAlertLocation()
         {
-            if (hasLastTrayIconCenter)
-                return GetLocationAboveTrayIcon(lastTrayIconCenter);
+            if (hasLastTrayIconCenter || hasLastTrayIconBounds)
+                return GetLocationAboveTrayIcon();
 
             var screen = Screen.FromPoint(Cursor.Position);
             var workingArea = screen.WorkingArea;

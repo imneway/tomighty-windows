@@ -46,22 +46,24 @@ namespace Tomighty.Windows.Tray
         {
             if (@event.Button == MouseButtons.Left)
             {
-                var iconCenter = GetNotifyIconCenter();
-                timerWindowPresenter.RememberTrayIconCenter(iconCenter);
-                timerWindowPresenter.Toggle(iconCenter);
+                var iconBounds = GetNotifyIconBounds();
+                timerWindowPresenter.RememberTrayIconBounds(iconBounds);
+                timerWindowPresenter.Toggle(iconBounds);
             }
         }
 
-        private Point GetNotifyIconCenter()
+        private Rectangle GetNotifyIconBounds()
         {
             Rect rect;
 
             if (!TryGetNotifyIconRect(out rect))
-                return Cursor.Position;
+            {
+                var center = Cursor.Position;
+                var size = Math.Max(16, SystemInformation.SmallIconSize.Height);
+                return new Rectangle(center.X - size / 2, center.Y - size / 2, size, size);
+            }
 
-            return new Point(
-                rect.Left + (rect.Right - rect.Left) / 2,
-                rect.Top + (rect.Bottom - rect.Top) / 2);
+            return Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom);
         }
 
         private bool TryGetNotifyIconRect(out Rect rect)
@@ -99,7 +101,7 @@ namespace Tomighty.Windows.Tray
 
         private void OnTimerStarted(TimerStarted @event)
         {
-            timerWindowPresenter.RememberTrayIconCenter(GetNotifyIconCenter());
+            timerWindowPresenter.RememberTrayIconBounds(GetNotifyIconBounds());
             UpdateTimerIcon(@event.RemainingTime);
         }
 
@@ -110,7 +112,7 @@ namespace Tomighty.Windows.Tray
 
         private void OnTimeElapsed(TimeElapsed @event)
         {
-            timerWindowPresenter.RememberTrayIconCenter(GetNotifyIconCenter());
+            timerWindowPresenter.RememberTrayIconBounds(GetNotifyIconBounds());
             UpdateTimerIcon(@event.RemainingTime);
         }
 
