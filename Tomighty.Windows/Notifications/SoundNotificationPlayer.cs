@@ -9,6 +9,9 @@ namespace Tomighty.Windows.Notifications
 {
     public class SoundNotificationPlayer
     {
+        private static readonly Logger Logger = new Logger("sound");
+        private static readonly object LogLock = new object();
+
         private readonly IUserPreferences userPreferences;
 
         public SoundNotificationPlayer(IUserPreferences userPreferences, IEventHub eventHub)
@@ -22,7 +25,7 @@ namespace Tomighty.Windows.Notifications
         {
             if (userPreferences.PlaySoundNotifications)
             {
-                PlaySound(() => Properties.Resources.audio_windup);
+                PlaySound("timer-started", () => Properties.Resources.audio_windup);
             }
         }
 
@@ -30,12 +33,13 @@ namespace Tomighty.Windows.Notifications
         {
             if (@event.IsIntervalCompleted && userPreferences.PlaySoundNotifications)
             {
-                PlaySound(() => Properties.Resources.audio_deskbell);
+                PlaySound($"interval-completed:{@event.IntervalType}", () => Properties.Resources.audio_deskbell);
             }
         }
 
-        private static void PlaySound(Func<Stream> openStream)
+        private static void PlaySound(string name, Func<Stream> openStream)
         {
+            LogInfo($"Queue sound: {name}");
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
@@ -43,15 +47,30 @@ namespace Tomighty.Windows.Notifications
                     using (var stream = openStream())
                     using (var player = new SoundPlayer(stream))
                     {
+                        LogInfo($"Play sound start: {name}, length={stream.Length}");
                         player.Load();
                         player.PlaySync();
+                        LogInfo($"Play sound finished: {name}");
                     }
                 }
                 catch (Exception exception)
                 {
+                    LogError(exception);
                     Debug.WriteLine(exception);
                 }
             });
+        }
+
+        private static void LogInfo(string message)
+        {
+            lock (LogLock)
+                Logger.Info(message);
+        }
+
+        private static void LogError(Exception exception)
+        {
+            lock (LogLock)
+                Logger.Error(exception);
         }
     }
 }

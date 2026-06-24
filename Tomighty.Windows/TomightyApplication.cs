@@ -35,8 +35,8 @@ namespace Tomighty.Windows
             initialTrayIcon.Dispose();
 
             new TrayMenuController(trayMenu, this, pomodoroEngine, eventHub);
-            new NotificationsPresenter(pomodoroEngine, userPreferences, eventHub);
             new SoundNotificationPlayer(userPreferences, eventHub);
+            new NotificationsPresenter(pomodoroEngine, userPreferences, eventHub);
 
             var aboutWindowPresenter = new AboutWindowPresenter();
             var userPreferencesPresenter = new UserPreferencesPresenter(userPreferences);

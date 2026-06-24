@@ -20,9 +20,9 @@ namespace Tomighty.Tools
         [STAThread]
         private static int Main(string[] args)
         {
-            if (args.Length < 1 || args.Length > 2)
+            if (args.Length < 1 || args.Length > 3)
             {
-                Console.Error.WriteLine("Usage: TrayRuntimeSmokeHost.exe <output-directory> [--sound]");
+                Console.Error.WriteLine("Usage: TrayRuntimeSmokeHost.exe <output-directory> [--sound] [--toast]");
                 return 2;
             }
 
@@ -31,12 +31,22 @@ namespace Tomighty.Tools
             Application.SetCompatibleTextRenderingDefault(false);
 
             var outputDirectory = args[0];
-            var playSound = args.Length == 2 && string.Equals(args[1], "--sound", StringComparison.OrdinalIgnoreCase);
+            var playSound = false;
+            var showToast = false;
+            for (var i = 1; i < args.Length; i++)
+            {
+                if (string.Equals(args[i], "--sound", StringComparison.OrdinalIgnoreCase))
+                    playSound = true;
+                else if (string.Equals(args[i], "--toast", StringComparison.OrdinalIgnoreCase))
+                    showToast = true;
+                else
+                    throw new ArgumentException($"Unknown argument: {args[i]}");
+            }
             System.IO.Directory.CreateDirectory(outputDirectory);
 
             var eventHub = new SynchronousEventHub();
             var timer = new Tomighty.Timer(eventHub);
-            var preferences = new SmokeUserPreferences(playSound);
+            var preferences = new SmokeUserPreferences(playSound, showToast);
             var engine = new PomodoroEngine(timer, preferences, eventHub);
             var completedIntervals = new List<IntervalType>();
             eventHub.Subscribe<TimerStopped>(@event =>
@@ -46,7 +56,7 @@ namespace Tomighty.Tools
                     completedIntervals.Add(@event.IntervalType);
                     System.IO.File.WriteAllText(
                         System.IO.Path.Combine(outputDirectory, $"{@event.IntervalType}-completion-event.txt"),
-                        $"interval={@event.IntervalType}{Environment.NewLine}remaining={@event.RemainingTime.Seconds}{Environment.NewLine}sound={playSound}");
+                        $"interval={@event.IntervalType}{Environment.NewLine}remaining={@event.RemainingTime.Seconds}{Environment.NewLine}sound={playSound}{Environment.NewLine}toast={showToast}");
                 }
             });
 
@@ -61,6 +71,9 @@ namespace Tomighty.Tools
 
                 var presenter = CreateTimerWindowPresenter(engine, timer, eventHub, preferences);
                 var trayIconController = CreateTrayIconController(notifyIcon, presenter, preferences, eventHub);
+                var notificationsPresenter = showToast
+                    ? CreateNotificationsPresenter(engine, preferences, eventHub)
+                    : null;
                 try
                 {
                     notifyIcon.Visible = true;
@@ -86,6 +99,7 @@ namespace Tomighty.Tools
                     notifyIcon.Visible = false;
                     (trayIconController as IDisposable)?.Dispose();
                     GC.KeepAlive(soundPlayer);
+                    GC.KeepAlive(notificationsPresenter);
                 }
             }
 
@@ -111,6 +125,17 @@ namespace Tomighty.Tools
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 null,
                 new object[] { notifyIcon, presenter, preferences, eventHub },
+                null);
+        }
+
+        private static object CreateNotificationsPresenter(IPomodoroEngine engine, IUserPreferences preferences, IEventHub eventHub)
+        {
+            var presenterType = typeof(TimerWindow).Assembly.GetType("Tomighty.Windows.Notifications.NotificationsPresenter", true);
+            return Activator.CreateInstance(
+                presenterType,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                new object[] { engine, preferences, eventHub },
                 null);
         }
 
@@ -281,10 +306,12 @@ namespace Tomighty.Tools
         private sealed class SmokeUserPreferences : IUserPreferences
         {
             private readonly bool playSoundNotifications;
+            private readonly bool showToastNotifications;
 
-            public SmokeUserPreferences(bool playSoundNotifications)
+            public SmokeUserPreferences(bool playSoundNotifications, bool showToastNotifications)
             {
                 this.playSoundNotifications = playSoundNotifications;
+                this.showToastNotifications = showToastNotifications;
             }
 
             public Duration GetIntervalDuration(IntervalType intervalType)
@@ -296,7 +323,7 @@ namespace Tomighty.Tools
             }
 
             public int MaxPomodoroCount => 4;
-            public bool ShowToastNotifications => false;
+            public bool ShowToastNotifications => showToastNotifications;
             public bool PlaySoundNotifications => playSoundNotifications;
             public bool ShowRemainingTimeOnTray => true;
             public bool SuppressPopupInFullscreenApps => true;

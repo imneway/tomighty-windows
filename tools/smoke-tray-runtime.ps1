@@ -1,7 +1,8 @@
 param (
     [string]$Configuration = "Debug",
     [string]$OutputDirectory = "",
-    [switch]$Sound
+    [switch]$Sound,
+    [switch]$Toast
 )
 
 $ErrorActionPreference = "Stop"
@@ -48,12 +49,15 @@ if ($LASTEXITCODE -ne 0) {
 
 Push-Location $appOutput
 try {
+    $hostArgs = @($OutputDirectory)
     if ($Sound) {
-        & $hostExe $OutputDirectory "--sound"
+        $hostArgs += "--sound"
     }
-    else {
-        & $hostExe $OutputDirectory
+    if ($Toast) {
+        $hostArgs += "--toast"
     }
+
+    & $hostExe @hostArgs
 
     if ($LASTEXITCODE -ne 0) {
         throw "TrayRuntimeSmokeHost failed with exit code $LASTEXITCODE."
