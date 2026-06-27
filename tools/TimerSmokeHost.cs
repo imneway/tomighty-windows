@@ -528,6 +528,20 @@ namespace Tomighty.Tools
             PumpUi();
             AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "idleReopened");
 
+            ClickInsideWindow(window);
+            PumpUi();
+            if (!window.Visible)
+                throw new InvalidOperationException("Regular tray popup hid after an inside focus click.");
+
+            ClickOutsideWindow(window, backdrop);
+            PumpUi();
+            if (window.Visible)
+                throw new InvalidOperationException("Focused regular tray popup stayed visible after an outside click.");
+
+            InvokePresenterToggle(presenter, trayIconBounds);
+            PumpUi();
+            AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "idleFocusedReopened");
+
             engine.StartTimer(IntervalType.Pomodoro);
             PumpUi();
             AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "pomodoro");
@@ -553,6 +567,11 @@ namespace Tomighty.Tools
                 throw new InvalidOperationException("Could not find a backdrop point outside the timer window.");
 
             LeftClick(point);
+        }
+
+        private static void ClickInsideWindow(TimerWindow window)
+        {
+            LeftClick(new Point(window.Left + window.Width / 2, window.Top + 12));
         }
 
         private static void LeftClick(Point point)

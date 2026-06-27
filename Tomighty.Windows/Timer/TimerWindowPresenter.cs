@@ -44,6 +44,8 @@ namespace Tomighty.Windows.Timer
         private Rectangle lastTrayIconBounds;
         private DateTime lastDeactivateHideTime = DateTime.MinValue;
         private DateTime windowShownTime = DateTime.MinValue;
+        private bool outsideClickDismissArmed;
+        private bool leftMouseButtonWasDown;
         private DateTime completionAcknowledgedTime = DateTime.MinValue;
         private bool completionAlertPending;
 
@@ -101,6 +103,7 @@ namespace Tomighty.Windows.Timer
             window.LostFocus += OnLostFocus;
             window.Deactivate += OnWindowDeactivate;
             window.VisibleChanged += OnWindowVisibleChanged;
+            window.UserMouseInteracted += OnWindowUserMouseInteracted;
             window.PinButton.Click += OnPinButtonClick;
             window.CloseButton.Click += OnCloseButtonClick;
 
@@ -350,6 +353,12 @@ namespace Tomighty.Windows.Timer
             }
         }
 
+        private void OnWindowUserMouseInteracted(object sender, EventArgs e)
+        {
+            outsideClickDismissArmed = true;
+            leftMouseButtonWasDown = IsLeftMouseButtonDown();
+        }
+
         private void HideIfFocusMovedOutside()
         {
             if (!ShouldAutoHideWindow() && !ShouldHideForOutsideMouseClick())
@@ -387,25 +396,55 @@ namespace Tomighty.Windows.Timer
 
             if ((DateTime.UtcNow - windowShownTime).TotalMilliseconds < 250)
             {
-                ConsumeLeftMouseClick();
+                UpdateLeftMouseButtonTracking();
                 return false;
             }
 
-            if (!ConsumeLeftMouseClick())
+            Point clickPoint;
+            if (!TryConsumeCompletedLeftMouseClick(out clickPoint))
                 return false;
 
-            return !window.Bounds.Contains(Cursor.Position);
+            if (window.Bounds.Contains(clickPoint))
+            {
+                outsideClickDismissArmed = true;
+                return false;
+            }
+
+            return outsideClickDismissArmed || !WindowHasForegroundFocus();
         }
 
         private void ResetOutsideClickTracking()
         {
             windowShownTime = DateTime.UtcNow;
-            ConsumeLeftMouseClick();
+            outsideClickDismissArmed = false;
+            leftMouseButtonWasDown = IsLeftMouseButtonDown();
         }
 
-        private static bool ConsumeLeftMouseClick()
+        private bool TryConsumeCompletedLeftMouseClick(out Point clickPoint)
         {
-            return (GetAsyncKeyState(LeftMouseButton) & 0x0001) != 0;
+            var isDown = IsLeftMouseButtonDown();
+            var wasDown = leftMouseButtonWasDown;
+
+            leftMouseButtonWasDown = isDown;
+
+            if (wasDown && !isDown)
+            {
+                clickPoint = Cursor.Position;
+                return true;
+            }
+
+            clickPoint = Point.Empty;
+            return false;
+        }
+
+        private void UpdateLeftMouseButtonTracking()
+        {
+            leftMouseButtonWasDown = IsLeftMouseButtonDown();
+        }
+
+        private static bool IsLeftMouseButtonDown()
+        {
+            return (GetAsyncKeyState(LeftMouseButton) & unchecked((short)0x8000)) != 0;
         }
 
         private bool WasCompletionJustAcknowledged()

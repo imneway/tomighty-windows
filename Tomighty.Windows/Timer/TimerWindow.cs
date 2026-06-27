@@ -130,6 +130,7 @@ namespace Tomighty.Windows.Timer
 
         public Button PinButton => pinButton;
         public Button CloseButton => closeButton;
+        public event EventHandler UserMouseInteracted;
 
         public void UpdateTitle(string text)
         {
@@ -465,6 +466,8 @@ namespace Tomighty.Windows.Timer
         {
             if (e.Button == MouseButtons.Left)
             {
+                OnUserMouseInteracted();
+
                 if (GetDropDownBounds().Contains(e.Location))
                 {
                     closeButtonPressed = true;
@@ -492,6 +495,11 @@ namespace Tomighty.Windows.Timer
             }
 
             base.OnMouseDown(e);
+        }
+
+        private void OnUserMouseInteracted()
+        {
+            UserMouseInteracted?.Invoke(this, EventArgs.Empty);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
