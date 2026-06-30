@@ -6,6 +6,7 @@
 //
 
 using System.Windows.Forms;
+using Tomighty.Windows.UI;
 
 namespace Tomighty.Windows.Preferences
 {
@@ -25,7 +26,12 @@ namespace Tomighty.Windows.Preferences
             maxPomodoroCountTextBox.Value = userPreferences.MaxPomodoroCount;
             toastNotification.Checked = userPreferences.ShowToastNotifications;
             soundNotifications.Checked = userPreferences.PlaySoundNotifications;
-            autoupdate.Checked = userPreferences.AutoUpdate;
+            showRemainingTimeOnTray.Checked = userPreferences.ShowRemainingTimeOnTray;
+            suppressPopupInFullscreenApps.Checked = userPreferences.SuppressPopupInFullscreenApps;
+            startWithWindows.Checked = StartupRegistration.IsEnabled;
+
+            ModernTheme.ApplyMicaDialog(this);
+            ModernTheme.StyleDefaultButton(okButton);
         }
 
         private void OnCancelButtonClick(object sender, System.EventArgs e)
@@ -43,8 +49,10 @@ namespace Tomighty.Windows.Preferences
                 newPreferences.MaxPomodoroCount = (int)maxPomodoroCountTextBox.Value;
                 newPreferences.ShowToastNotifications = toastNotification.Checked;
                 newPreferences.PlaySoundNotifications = soundNotifications.Checked;
-                newPreferences.AutoUpdate = autoupdate.Checked;
+                newPreferences.ShowRemainingTimeOnTray = showRemainingTimeOnTray.Checked;
+                newPreferences.SuppressPopupInFullscreenApps = suppressPopupInFullscreenApps.Checked;
             });
+            StartupRegistration.SetEnabled(startWithWindows.Checked);
 
             Close();
         }

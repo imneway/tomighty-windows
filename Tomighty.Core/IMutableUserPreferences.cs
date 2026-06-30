@@ -12,7 +12,8 @@ namespace Tomighty
         void SetIntervalDuration(IntervalType intervalType, Duration duration);
         new bool ShowToastNotifications { get; set; }
         new bool PlaySoundNotifications { get; set; }
+        new bool ShowRemainingTimeOnTray { get; set; }
+        new bool SuppressPopupInFullscreenApps { get; set; }
         new int MaxPomodoroCount { get; set; }
-        new bool AutoUpdate { get; set; }
     }
 }

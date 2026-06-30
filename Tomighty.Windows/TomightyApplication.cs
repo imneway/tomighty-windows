@@ -26,13 +26,17 @@ namespace Tomighty.Windows
 
             var trayMenu = new TrayMenu() as ITrayMenu;
             var trayIcon = CreateTrayIcon(trayMenu);
-            var timerWindowPresenter = new TimerWindowPresenter(pomodoroEngine, timer, eventHub);
+            var initialTrayIcon = TrayIconFactory.CreateDefaultIcon();
+            trayIcon.Icon = initialTrayIcon;
+            trayIcon.Visible = true;
 
-            new TrayIconController(trayIcon, timerWindowPresenter, eventHub);
+            var timerWindowPresenter = new TimerWindowPresenter(pomodoroEngine, timer, eventHub, userPreferences);
+            var trayIconController = new TrayIconController(trayIcon, timerWindowPresenter, userPreferences, eventHub);
+            initialTrayIcon.Dispose();
+
             new TrayMenuController(trayMenu, this, pomodoroEngine, eventHub);
-            new NotificationsPresenter(pomodoroEngine, userPreferences, eventHub);
             new SoundNotificationPlayer(userPreferences, eventHub);
-            new AutoUpdate(userPreferences).Start();
+            new NotificationsPresenter(pomodoroEngine, userPreferences, eventHub);
 
             var aboutWindowPresenter = new AboutWindowPresenter();
             var userPreferencesPresenter = new UserPreferencesPresenter(userPreferences);
@@ -40,7 +44,11 @@ namespace Tomighty.Windows
             trayMenu.OnAboutClick((sender, e) => aboutWindowPresenter.Show());
             trayMenu.OnPreferencesClick((sender, e) => userPreferencesPresenter.Show());
 
-            ThreadExit += (sender, e) => trayIcon.Dispose();
+            ThreadExit += (sender, e) =>
+            {
+                trayIconController.Dispose();
+                trayIcon.Dispose();
+            };
 
             new StartupEvents(eventHub);
         }
@@ -50,9 +58,7 @@ namespace Tomighty.Windows
             var trayIcon = new NotifyIcon(new Container());
 
             trayIcon.Text = "Tomighty";
-            trayIcon.Icon = Properties.Resources.icon_tomato_white;
             trayIcon.ContextMenuStrip = trayMenu.Component;
-            trayIcon.Visible = true;
 
             return trayIcon;
         }

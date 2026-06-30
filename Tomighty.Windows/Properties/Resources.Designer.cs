@@ -68,6 +68,15 @@ namespace Tomighty.Windows.Properties {
                 return ResourceManager.GetStream("audio_deskbell", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized resource of type System.IO.UnmanagedMemoryStream similar to System.IO.MemoryStream.
+        /// </summary>
+        internal static System.IO.UnmanagedMemoryStream audio_windup {
+            get {
+                return ResourceManager.GetStream("audio_windup", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
@@ -243,28 +252,6 @@ namespace Tomighty.Windows.Properties {
         internal static string String_ShortBreak {
             get {
                 return ResourceManager.GetString("String_ShortBreak", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt; 
-        ///&lt;toast launch=&quot;tomighty&quot;&gt;
-        ///  &lt;visual&gt;
-        ///    &lt;binding template=&quot;ToastGeneric&quot;&gt;
-        ///      &lt;text&gt;First time using Tomighty?&lt;/text&gt;
-        ///      &lt;text&gt;There should be a tomato-shaped icon somewhere in your task bar.&lt;/text&gt;
-        ///      &lt;text&gt;Start by clicking on it. The left button shows the menu.&lt;/text&gt;
-        ///      &lt;image src=&apos;{image_src}&apos; placement=&apos;appLogoOverride&apos;/&gt;
-        ///    &lt;/binding&gt;
-        ///  &lt;/visual&gt;
-        ///  &lt;actions&gt;
-        ///    &lt;action content=&quot;Got It&quot; arguments=&quot;dismiss&quot; /&gt;
-        ///  &lt;/actions&gt;
-        ///  &lt;audio src=&quot;ms-winsound [rest of string was truncated]&quot;;.
-        /// </summary>
-        internal static string toast_template_app_updated {
-            get {
-                return ResourceManager.GetString("toast_template_app_updated", resourceCulture);
             }
         }
         

@@ -57,7 +57,9 @@ namespace Tomighty.Windows.Preferences
             this.toastNotification = new System.Windows.Forms.CheckBox();
             this.label8 = new System.Windows.Forms.Label();
             this.tabPage3 = new System.Windows.Forms.TabPage();
-            this.autoupdate = new System.Windows.Forms.CheckBox();
+            this.startWithWindows = new System.Windows.Forms.CheckBox();
+            this.showRemainingTimeOnTray = new System.Windows.Forms.CheckBox();
+            this.suppressPopupInFullscreenApps = new System.Windows.Forms.CheckBox();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.longBreakDurationTextBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.shortBreakDurationTextBox)).BeginInit();
@@ -85,7 +87,7 @@ namespace Tomighty.Windows.Preferences
             this.groupBox1.Controls.Add(this.label1);
             this.groupBox1.Location = new System.Drawing.Point(13, 13);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(229, 113);
+            this.groupBox1.Size = new System.Drawing.Size(302, 113);
             this.groupBox1.TabIndex = 0;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Duration";
@@ -221,7 +223,7 @@ namespace Tomighty.Windows.Preferences
             this.groupBox2.Controls.Add(this.label7);
             this.groupBox2.Location = new System.Drawing.Point(10, 132);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(232, 81);
+            this.groupBox2.Size = new System.Drawing.Size(305, 81);
             this.groupBox2.TabIndex = 1;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Long Break Cycle";
@@ -261,7 +263,7 @@ namespace Tomighty.Windows.Preferences
             // okButton
             // 
             this.okButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.okButton.Location = new System.Drawing.Point(119, 273);
+            this.okButton.Location = new System.Drawing.Point(192, 273);
             this.okButton.Name = "okButton";
             this.okButton.Size = new System.Drawing.Size(75, 23);
             this.okButton.TabIndex = 2;
@@ -273,7 +275,7 @@ namespace Tomighty.Windows.Preferences
             // 
             this.cancelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.cancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.cancelButton.Location = new System.Drawing.Point(200, 273);
+            this.cancelButton.Location = new System.Drawing.Point(273, 273);
             this.cancelButton.Name = "cancelButton";
             this.cancelButton.Size = new System.Drawing.Size(75, 23);
             this.cancelButton.TabIndex = 3;
@@ -292,7 +294,7 @@ namespace Tomighty.Windows.Preferences
             this.tabControl1.Location = new System.Drawing.Point(12, 12);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(263, 255);
+            this.tabControl1.Size = new System.Drawing.Size(336, 255);
             this.tabControl1.TabIndex = 4;
             // 
             // tabPage1
@@ -302,7 +304,7 @@ namespace Tomighty.Windows.Preferences
             this.tabPage1.Location = new System.Drawing.Point(4, 22);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(10);
-            this.tabPage1.Size = new System.Drawing.Size(255, 229);
+            this.tabPage1.Size = new System.Drawing.Size(328, 229);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Cycles";
             this.tabPage1.UseVisualStyleBackColor = true;
@@ -315,7 +317,7 @@ namespace Tomighty.Windows.Preferences
             this.tabPage2.Location = new System.Drawing.Point(4, 22);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(10);
-            this.tabPage2.Size = new System.Drawing.Size(255, 229);
+            this.tabPage2.Size = new System.Drawing.Size(328, 229);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Notifications";
             this.tabPage2.UseVisualStyleBackColor = true;
@@ -348,35 +350,56 @@ namespace Tomighty.Windows.Preferences
             this.label8.Size = new System.Drawing.Size(120, 13);
             this.label8.TabIndex = 0;
             this.label8.Text = "When the timer finishes:";
-            // 
+            //
             // tabPage3
-            // 
-            this.tabPage3.Controls.Add(this.autoupdate);
+            //
+            this.tabPage3.Controls.Add(this.startWithWindows);
+            this.tabPage3.Controls.Add(this.suppressPopupInFullscreenApps);
+            this.tabPage3.Controls.Add(this.showRemainingTimeOnTray);
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.Padding = new System.Windows.Forms.Padding(10);
-            this.tabPage3.Size = new System.Drawing.Size(255, 229);
+            this.tabPage3.Size = new System.Drawing.Size(328, 229);
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Miscellaneous";
             this.tabPage3.UseVisualStyleBackColor = true;
-            // 
-            // autoupdate
-            // 
-            this.autoupdate.AutoSize = true;
-            this.autoupdate.Location = new System.Drawing.Point(14, 14);
-            this.autoupdate.Name = "autoupdate";
-            this.autoupdate.Size = new System.Drawing.Size(228, 17);
-            this.autoupdate.TabIndex = 0;
-            this.autoupdate.Text = "Automatically download and install updates";
-            this.autoupdate.UseVisualStyleBackColor = true;
-            // 
+            //
+            // startWithWindows
+            //
+            this.startWithWindows.AutoSize = true;
+            this.startWithWindows.Location = new System.Drawing.Point(14, 14);
+            this.startWithWindows.Name = "startWithWindows";
+            this.startWithWindows.Size = new System.Drawing.Size(194, 17);
+            this.startWithWindows.TabIndex = 0;
+            this.startWithWindows.Text = "Start Tomighty when Windows starts";
+            this.startWithWindows.UseVisualStyleBackColor = true;
+            //
+            // showRemainingTimeOnTray
+            //
+            this.showRemainingTimeOnTray.AutoSize = true;
+            this.showRemainingTimeOnTray.Location = new System.Drawing.Point(14, 37);
+            this.showRemainingTimeOnTray.Name = "showRemainingTimeOnTray";
+            this.showRemainingTimeOnTray.Size = new System.Drawing.Size(160, 17);
+            this.showRemainingTimeOnTray.TabIndex = 1;
+            this.showRemainingTimeOnTray.Text = "Show remaining time on tray";
+            this.showRemainingTimeOnTray.UseVisualStyleBackColor = true;
+            //
+            // suppressPopupInFullscreenApps
+            //
+            this.suppressPopupInFullscreenApps.AutoSize = true;
+            this.suppressPopupInFullscreenApps.Location = new System.Drawing.Point(14, 60);
+            this.suppressPopupInFullscreenApps.Name = "suppressPopupInFullscreenApps";
+            this.suppressPopupInFullscreenApps.Size = new System.Drawing.Size(257, 17);
+            this.suppressPopupInFullscreenApps.TabIndex = 2;
+            this.suppressPopupInFullscreenApps.Text = "Hide timer popup while fullscreen apps are active";
+            this.suppressPopupInFullscreenApps.UseVisualStyleBackColor = true;
             // UserPreferencesForm
             // 
             this.AcceptButton = this.okButton;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.CancelButton = this.cancelButton;
-            this.ClientSize = new System.Drawing.Size(287, 308);
+            this.ClientSize = new System.Drawing.Size(360, 308);
             this.Controls.Add(this.tabControl1);
             this.Controls.Add(this.cancelButton);
             this.Controls.Add(this.okButton);
@@ -428,6 +451,8 @@ namespace Tomighty.Windows.Preferences
         private System.Windows.Forms.CheckBox toastNotification;
         private System.Windows.Forms.CheckBox soundNotifications;
         private System.Windows.Forms.TabPage tabPage3;
-        private System.Windows.Forms.CheckBox autoupdate;
+        private System.Windows.Forms.CheckBox startWithWindows;
+        private System.Windows.Forms.CheckBox showRemainingTimeOnTray;
+        private System.Windows.Forms.CheckBox suppressPopupInFullscreenApps;
     }
 }

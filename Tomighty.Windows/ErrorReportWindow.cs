@@ -7,6 +7,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Windows.Forms;
+using Tomighty.Windows.UI;
 
 namespace Tomighty.Windows
 {
@@ -15,6 +16,8 @@ namespace Tomighty.Windows
         public ErrorReportWindow(Exception exception)
         {
             InitializeComponent();
+            ModernTheme.ApplyMicaDialog(this);
+            ModernTheme.StyleDefaultButton(reportButton);
             errorDescription.Text = exception.ToString();
         }
 

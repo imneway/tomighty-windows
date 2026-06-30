@@ -59,7 +59,8 @@ namespace Tomighty.Windows.Preferences
             MaxPomodoroCount = 4,
             ShowToastNotifications = true,
             PlaySoundNotifications = true,
-            AutoUpdate = true
+            ShowRemainingTimeOnTray = true,
+            SuppressPopupInFullscreenApps = true
         };
 
         public Duration GetIntervalDuration(IntervalType intervalType)
@@ -95,13 +96,19 @@ namespace Tomighty.Windows.Preferences
             get { return values.PlaySoundNotifications; }
             set { values.PlaySoundNotifications = value; }
         }
-        
-        public bool AutoUpdate
+
+        public bool ShowRemainingTimeOnTray
         {
-            get { return values.AutoUpdate; }
-            set { values.AutoUpdate = value; }
+            get { return values.ShowRemainingTimeOnTray ?? DefaultValues.ShowRemainingTimeOnTray.GetValueOrDefault(); }
+            set { values.ShowRemainingTimeOnTray = value; }
         }
 
+        public bool SuppressPopupInFullscreenApps
+        {
+            get { return values.SuppressPopupInFullscreenApps ?? DefaultValues.SuppressPopupInFullscreenApps.GetValueOrDefault(); }
+            set { values.SuppressPopupInFullscreenApps = value; }
+        }
+        
         public void Update(Action<IMutableUserPreferences> action)
         {
             action(this);
@@ -120,7 +127,8 @@ namespace Tomighty.Windows.Preferences
             [DataMember] public int MaxPomodoroCount { get; set; }
             [DataMember] public bool ShowToastNotifications { get; set; }
             [DataMember] public bool PlaySoundNotifications { get; set; }
-            [DataMember] public bool AutoUpdate { get; set; }
+            [DataMember] public bool? ShowRemainingTimeOnTray { get; set; }
+            [DataMember] public bool? SuppressPopupInFullscreenApps { get; set; }
         }
     }
 }

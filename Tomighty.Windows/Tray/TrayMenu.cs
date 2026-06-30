@@ -8,6 +8,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using Tomighty.Windows.UI;
 
 namespace Tomighty.Windows.Tray
 {
@@ -27,41 +28,52 @@ namespace Tomighty.Windows.Tray
 
         public TrayMenu()
         {
-            remainingTimeItem = new ToolStripMenuItem("00:00", Properties.Resources.image_clock);
+            remainingTimeItem = new ThemedToolStripMenuItem("00:00");
             remainingTimeItem.Enabled = false;
             remainingTimeItem.Font = new Font(remainingTimeItem.Font, FontStyle.Bold);
 
-            stopTimerItem = new ToolStripMenuItem("Stop", Properties.Resources.image_stop);
+            stopTimerItem = new ThemedToolStripMenuItem("Stop");
 
-            pomodoroCountItem = new ToolStripMenuItem();
+            pomodoroCountItem = new ThemedToolStripMenuItem();
             pomodoroCountItem.Enabled = false;
 
-            resetPomodoroCountItem = new ToolStripMenuItem("Reset count");
+            resetPomodoroCountItem = new ThemedToolStripMenuItem("Reset count");
             resetPomodoroCountItem.Enabled = false;
 
-            startPomodoroItem = new ToolStripMenuItem("Pomodoro", Properties.Resources.image_tomato_red);
-            startShortBreakItem = new ToolStripMenuItem("Short break", Properties.Resources.image_tomato_green);
-            startLongBreakItem = new ToolStripMenuItem("Long break", Properties.Resources.image_tomato_blue);
+            startPomodoroItem = new ThemedToolStripMenuItem("Pomodoro");
+            startShortBreakItem = new ThemedToolStripMenuItem("Short break");
+            startLongBreakItem = new ThemedToolStripMenuItem("Long break");
 
-            aboutItem = new ToolStripMenuItem("About Tomighty");
-            preferencesItem = new ToolStripMenuItem("Preferences...");
-            exitItem = new ToolStripMenuItem("Exit");
+            aboutItem = new ThemedToolStripMenuItem("About Tomighty");
+            preferencesItem = new ThemedToolStripMenuItem("Preferences...");
+            exitItem = new ThemedToolStripMenuItem("Exit");
 
             contextMenu = new ContextMenuStrip();
             contextMenu.Items.Add(remainingTimeItem);
             contextMenu.Items.Add(stopTimerItem);
-            contextMenu.Items.Add(new ToolStripSeparator());
+            contextMenu.Items.Add(CreateSeparator());
             contextMenu.Items.Add(pomodoroCountItem);
             contextMenu.Items.Add(resetPomodoroCountItem);
-            contextMenu.Items.Add(new ToolStripSeparator());
+            contextMenu.Items.Add(CreateSeparator());
             contextMenu.Items.Add(startPomodoroItem);
             contextMenu.Items.Add(startShortBreakItem);
             contextMenu.Items.Add(startLongBreakItem);
-            contextMenu.Items.Add(new ToolStripSeparator());
+            contextMenu.Items.Add(CreateSeparator());
             contextMenu.Items.Add(aboutItem);
             contextMenu.Items.Add(preferencesItem);
-            contextMenu.Items.Add(new ToolStripSeparator());
+            contextMenu.Items.Add(CreateSeparator());
             contextMenu.Items.Add(exitItem);
+
+            ModernTheme.ApplyContextMenu(contextMenu);
+        }
+
+        private static ToolStripSeparator CreateSeparator()
+        {
+            return new ToolStripSeparator
+            {
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
         }
 
         public ContextMenuStrip Component => contextMenu;

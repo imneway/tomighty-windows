@@ -7,6 +7,8 @@
 
 using System;
 using System.Drawing;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Tomighty.Events;
 using Tomighty.Windows.Timer;
@@ -17,47 +19,143 @@ namespace Tomighty.Windows.Tray
     {
         private readonly NotifyIcon notifyIcon;
         private readonly TimerWindowPresenter timerWindowPresenter;
+        private readonly IUserPreferences userPreferences;
+        private Icon currentIcon;
 
-        public TrayIconController(NotifyIcon notifyIcon, TimerWindowPresenter timerWindowPresenter, IEventHub eventHub)
+        public TrayIconController(NotifyIcon notifyIcon, TimerWindowPresenter timerWindowPresenter, IUserPreferences userPreferences, IEventHub eventHub)
         {
             this.notifyIcon = notifyIcon;
             this.timerWindowPresenter = timerWindowPresenter;
+            this.userPreferences = userPreferences;
 
-            notifyIcon.Click += OnNotifyIconClick;
+            notifyIcon.MouseClick += OnNotifyIconMouseClick;
+            SetIcon(TrayIconFactory.CreateDefaultIcon());
 
             eventHub.Subscribe<TimerStarted>(OnTimerStarted);
             eventHub.Subscribe<TimerStopped>(OnTimerStopped);
+            eventHub.Subscribe<TimeElapsed>(OnTimeElapsed);
         }
         
         public void Dispose()
         {
+            DisposeCurrentIcon();
             notifyIcon.Container.Dispose();
         }
 
-        private void OnNotifyIconClick(object sender, EventArgs @event)
+        private void OnNotifyIconMouseClick(object sender, MouseEventArgs @event)
         {
-            if (((MouseEventArgs)@event).Button == MouseButtons.Left)
+            if (@event.Button == MouseButtons.Left)
             {
-                timerWindowPresenter.Toggle(Cursor.Position);
+                var iconBounds = GetNotifyIconBounds();
+                timerWindowPresenter.RememberTrayIconBounds(iconBounds);
+                timerWindowPresenter.Toggle(iconBounds);
+            }
+        }
+
+        private Rectangle GetNotifyIconBounds()
+        {
+            Rect rect;
+
+            if (!TryGetNotifyIconRect(out rect))
+            {
+                var center = Cursor.Position;
+                var size = Math.Max(16, SystemInformation.SmallIconSize.Height);
+                return new Rectangle(center.X - size / 2, center.Y - size / 2, size, size);
+            }
+
+            return Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom);
+        }
+
+        private bool TryGetNotifyIconRect(out Rect rect)
+        {
+            rect = default(Rect);
+
+            try
+            {
+                var type = typeof(NotifyIcon);
+                var idField = type.GetField("id", BindingFlags.Instance | BindingFlags.NonPublic);
+                var windowField = type.GetField("window", BindingFlags.Instance | BindingFlags.NonPublic);
+
+                if (idField == null || windowField == null)
+                    return false;
+
+                var nativeWindow = windowField.GetValue(notifyIcon) as NativeWindow;
+                if (nativeWindow == null || nativeWindow.Handle == IntPtr.Zero)
+                    return false;
+
+                var identifier = new NotifyIconIdentifier
+                {
+                    Size = Marshal.SizeOf(typeof(NotifyIconIdentifier)),
+                    WindowHandle = nativeWindow.Handle,
+                    Id = (uint)(int)idField.GetValue(notifyIcon),
+                    Guid = Guid.Empty
+                };
+
+                return Shell_NotifyIconGetRect(ref identifier, out rect) == 0;
+            }
+            catch
+            {
+                return false;
             }
         }
 
         private void OnTimerStarted(TimerStarted @event)
         {
-            notifyIcon.Icon = GetIcon(@event.IntervalType);
+            timerWindowPresenter.RememberTrayIconBounds(GetNotifyIconBounds());
+            UpdateTimerIcon(@event.RemainingTime);
         }
 
         private void OnTimerStopped(TimerStopped @event)
         {
-            notifyIcon.Icon = Properties.Resources.icon_tomato_white;
+            SetIcon(TrayIconFactory.CreateDefaultIcon());
         }
 
-        private Icon GetIcon(IntervalType intervalType)
+        private void OnTimeElapsed(TimeElapsed @event)
         {
-            if (intervalType == IntervalType.Pomodoro) return Properties.Resources.icon_tomato_red;
-            if (intervalType == IntervalType.ShortBreak) return Properties.Resources.icon_tomato_green;
-            if (intervalType == IntervalType.LongBreak) return Properties.Resources.icon_tomato_blue;
-            throw new ArgumentException($"Invalid interval type: {intervalType}");
+            timerWindowPresenter.RememberTrayIconBounds(GetNotifyIconBounds());
+            UpdateTimerIcon(@event.RemainingTime);
         }
+
+        private void UpdateTimerIcon(Duration remainingTime)
+        {
+            SetIcon(userPreferences.ShowRemainingTimeOnTray
+                ? TrayIconFactory.CreateRemainingTimeIcon(remainingTime)
+                : TrayIconFactory.CreateDefaultIcon());
+        }
+
+        private void SetIcon(Icon icon)
+        {
+            var previousIcon = currentIcon;
+            currentIcon = icon;
+            notifyIcon.Icon = currentIcon;
+            previousIcon?.Dispose();
+        }
+
+        private void DisposeCurrentIcon()
+        {
+            currentIcon?.Dispose();
+            currentIcon = null;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NotifyIconIdentifier
+        {
+            public int Size;
+            public IntPtr WindowHandle;
+            public uint Id;
+            public Guid Guid;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Rect
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [DllImport("shell32.dll", SetLastError = false)]
+        private static extern int Shell_NotifyIconGetRect(ref NotifyIconIdentifier identifier, out Rect iconLocation);
     }
 }

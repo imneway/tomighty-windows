@@ -15,7 +15,8 @@ namespace Tomighty
         int MaxPomodoroCount { get; }
         bool ShowToastNotifications { get; }
         bool PlaySoundNotifications { get; }
-        bool AutoUpdate { get; }
+        bool ShowRemainingTimeOnTray { get; }
+        bool SuppressPopupInFullscreenApps { get; }
 
         void Update(Action<IMutableUserPreferences> action);
     }
