@@ -52,6 +52,7 @@ namespace Tomighty.Windows.Timer
         private const int PopupExitDuration = 150;
         private const uint SPI_GETUIEFFECTS = 0x103E;
         private const float TitleOnlyFontSize = 13f;
+        private const float MinLayoutScale = 0.25f;
 
         private enum ActionButtonTone
         {
@@ -91,6 +92,12 @@ namespace Tomighty.Windows.Timer
             InitializeComponent();
 
             AutoScaleMode = AutoScaleMode.None;
+
+            // This window manages its own per-monitor DPI layout in WndProc;
+            // cancel the WinForms auto-scaling so the two don't fight over
+            // window bounds and fonts on every DPI change.
+            DpiChanged += (sender, e) => e.Cancel = true;
+
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
             ModernTheme.ApplyTimerWindow(this);
             Windows11Backdrop.SuppressBorder(this);
@@ -130,7 +137,6 @@ namespace Tomighty.Windows.Timer
 
         public Button PinButton => pinButton;
         public Button CloseButton => closeButton;
-        public event EventHandler UserMouseInteracted;
 
         public void UpdateTitle(string text)
         {
@@ -268,15 +274,33 @@ namespace Tomighty.Windows.Timer
 
         public void Show(Point location)
         {
+            Show(() => location);
+        }
+
+        public void Show(Func<Point> locationProvider)
+        {
             TopMost = true;
             StopPopupAnimation();
             var wasVisible = Visible;
 
-            if (!wasVisible && ShouldAnimatePopup())
-            {
-                var offset = ScaleLayout(PopupEnterOffset);
-                Location = new Point(location.X, location.Y + offset);
+            // Move first: crossing into a monitor with a different DPI resizes
+            // this window, so the final location must be recomputed afterwards
+            // with the new size.
+            Location = locationProvider();
+
+            var animateEntry = !wasVisible && ShouldAnimatePopup();
+
+            if (animateEntry)
                 Opacity = 0.0;
+
+            if (!wasVisible)
+                base.Show();
+
+            var location = locationProvider();
+
+            if (animateEntry)
+            {
+                Location = new Point(location.X, location.Y + ScaleLayout(PopupEnterOffset));
             }
             else
             {
@@ -284,16 +308,13 @@ namespace Tomighty.Windows.Timer
                 Opacity = 1.0;
             }
 
-            if (!wasVisible)
-                base.Show();
-
             BringToFront();
             Activate();
 
             if (IsHandleCreated)
                 SetForegroundWindow(Handle);
 
-            if (!wasVisible && ShouldAnimatePopup())
+            if (animateEntry)
                 StartPopupEnterAnimation(location);
         }
 
@@ -350,6 +371,15 @@ namespace Tomighty.Windows.Timer
 
         private void OnPopupAnimationTick(object sender, EventArgs e)
         {
+            // A queued tick can arrive after the window was disposed without
+            // FormClosed (e.g. Dispose while an animation is in flight); it
+            // must not touch the dead window.
+            if (IsDisposed)
+            {
+                StopPopupAnimation();
+                return;
+            }
+
             if (popupAnimation == null)
                 return;
 
@@ -451,6 +481,12 @@ namespace Tomighty.Windows.Timer
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            DisposePopupAnimationTimer();
+            base.OnFormClosed(e);
+        }
+
+        private void DisposePopupAnimationTimer()
+        {
             StopPopupAnimation();
 
             if (popupAnimationTimer != null)
@@ -458,16 +494,12 @@ namespace Tomighty.Windows.Timer
                 popupAnimationTimer.Dispose();
                 popupAnimationTimer = null;
             }
-
-            base.OnFormClosed(e);
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
-                OnUserMouseInteracted();
-
                 if (GetDropDownBounds().Contains(e.Location))
                 {
                     closeButtonPressed = true;
@@ -495,11 +527,6 @@ namespace Tomighty.Windows.Timer
             }
 
             base.OnMouseDown(e);
-        }
-
-        private void OnUserMouseInteracted()
-        {
-            UserMouseInteracted?.Invoke(this, EventArgs.Empty);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
@@ -906,7 +933,7 @@ namespace Tomighty.Windows.Timer
             {
                 try
                 {
-                    return Math.Max(1f, GetDpiForWindow(Handle) / 96f);
+                    return Math.Max(MinLayoutScale, GetDpiForWindow(Handle) / 96f);
                 }
                 catch
                 {
@@ -915,7 +942,7 @@ namespace Tomighty.Windows.Timer
 
             using (var graphics = CreateGraphics())
             {
-                return Math.Max(1f, graphics.DpiX / 96f);
+                return Math.Max(MinLayoutScale, graphics.DpiX / 96f);
             }
         }
 
@@ -926,14 +953,31 @@ namespace Tomighty.Windows.Timer
 
         private void ApplyDpiLayoutScale(float dpiScale)
         {
-            layoutScale = Math.Max(1f, dpiScale);
+            var previousBounds = Bounds;
+            var wasVisible = Visible;
+
+            layoutScale = Math.Max(MinLayoutScale, dpiScale);
             ApplyCompactFonts();
             ApplyCompactWindowSize();
             UpdateWindowRegion();
             UpdateCompactBounds();
+
+            // ApplyCompactWindowSize keeps the bottom edge; also keep the
+            // horizontal center so a visible popup stays anchored in place.
+            if (wasVisible && Size != previousBounds.Size)
+                Location = KeepOnScreen(new Point(previousBounds.Left + (previousBounds.Width - Width) / 2, Top), previousBounds);
+
             closeButton.Invalidate();
             timerButton.Invalidate();
             Invalidate();
+        }
+
+        private Point KeepOnScreen(Point location, Rectangle referenceBounds)
+        {
+            var screenBounds = Screen.FromRectangle(referenceBounds).Bounds;
+            var x = Math.Max(screenBounds.Left, Math.Min(location.X, screenBounds.Right - Width));
+            var y = Math.Max(screenBounds.Top, Math.Min(location.Y, screenBounds.Bottom - Height));
+            return new Point(x, y);
         }
 
         private void DrawDropDownArrow(Graphics graphics, Rectangle bounds)
@@ -1135,7 +1179,7 @@ namespace Tomighty.Windows.Timer
 
         private static float GetDpiScaleFromWParam(IntPtr wParam)
         {
-            return Math.Max(1f, ((int)wParam & 0xFFFF) / 96f);
+            return Math.Max(MinLayoutScale, ((int)wParam & 0xFFFF) / 96f);
         }
 
         private class DropDownButton : Button
