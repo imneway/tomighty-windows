@@ -31,6 +31,7 @@ namespace Tomighty.Windows.Timer
         private const int ActionButtonHeight = 32;
         private const int ActionButtonGap = 4;
         private const int TitleHeight = 20;
+        private const int CloseBarVerticalPadding = 5;
         private const int DropDownSize = 30;
         private const int TimeVerticalMargin = 14;
         private const int TimeTop = CompactPadding + TitleHeight + TimeVerticalMargin;
@@ -730,11 +731,14 @@ namespace Tomighty.Windows.Timer
         }
 
         // The whole top strip acts as the close control (not just the chevron),
-        // so it is an easy target for dismissing a sticky completion alert.
+        // so it is an easy target for dismissing a sticky completion alert. Its
+        // height is padded above and below the title row (without moving any
+        // other content) to give a comfortably large hit/hover area.
         private Rectangle GetCloseBarBounds()
         {
             var padding = ScaleLayout(CompactPadding);
-            return new Rectangle(padding, padding, ClientSize.Width - padding * 2, ScaleLayout(TitleHeight));
+            var extra = ScaleLayout(CloseBarVerticalPadding);
+            return new Rectangle(padding, padding - extra, ClientSize.Width - padding * 2, ScaleLayout(TitleHeight) + extra * 2);
         }
 
         private void DrawCloseBarHighlight(Graphics graphics)
