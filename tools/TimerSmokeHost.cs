@@ -82,7 +82,7 @@ namespace Tomighty.Tools
                 Progress("tray-placement");
                 AssertTrayAnchoredPopupPlacement(backdrop);
                 Progress("completion-outside-click");
-                AssertCompletionAlertDismissesOnOutsideClick(backdrop);
+                AssertCompletionAlertLocksOutsideClickAndClosesViaTopBar(backdrop);
                 Progress("dpi-message");
                 AssertDpiChangedMessageKeepsCompactLayout(backdrop);
                 Progress("all-asserts-done");
@@ -292,6 +292,19 @@ namespace Tomighty.Tools
         {
             var bounds = (Rectangle)typeof(TimerWindow)
                 .GetMethod("GetPrimaryActionButtonBounds", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(window, new object[0]);
+            var x = bounds.Left + bounds.Width / 2;
+            var y = bounds.Top + bounds.Height / 2;
+            var args = new MouseEventArgs(MouseButtons.Left, 1, x, y, 0);
+
+            typeof(TimerWindow).GetMethod("OnMouseDown", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(window, new object[] { args });
+            typeof(TimerWindow).GetMethod("OnMouseUp", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(window, new object[] { args });
+        }
+
+        private static void ClickCloseBar(TimerWindow window)
+        {
+            var bounds = (Rectangle)typeof(TimerWindow)
+                .GetMethod("GetCloseBarBounds", BindingFlags.Instance | BindingFlags.NonPublic)
                 .Invoke(window, new object[0]);
             var x = bounds.Left + bounds.Width / 2;
             var y = bounds.Top + bounds.Height / 2;
@@ -566,7 +579,7 @@ namespace Tomighty.Tools
             window.Close();
         }
 
-        private static void AssertCompletionAlertDismissesOnOutsideClick(ProbeBackdropForm backdrop)
+        private static void AssertCompletionAlertLocksOutsideClickAndClosesViaTopBar(ProbeBackdropForm backdrop)
         {
             SetThemeOverride(true);
 
@@ -583,23 +596,26 @@ namespace Tomighty.Tools
             if (!window.Visible)
                 throw new InvalidOperationException("Completion alert did not appear.");
 
-            InvokeGlobalLeftMouseDown(presenter, new Point(window.Left + window.Width / 2, window.Top + window.Height / 2));
+            // The completion alert is sticky: an outside click must NOT dismiss
+            // it, so a stray desktop click cannot make the user miss the alert.
+            InvokeGlobalLeftMouseDown(presenter, new Point(backdrop.Left + 12, backdrop.Top + 12));
             PumpUi();
             if (!window.Visible)
-                throw new InvalidOperationException("Completion alert hid after an inside mouse-down.");
+                throw new InvalidOperationException("Completion alert was dismissed by an outside click; it should be locked.");
 
-            // Drive the dismissal through the hook seam: real injected clicks
-            // are not deliverable when the session is locked, and the plain
-            // tray popup test already covers real end-to-end click delivery.
-            InvokeGlobalLeftMouseDown(presenter, new Point(backdrop.Left + 12, backdrop.Top + 12));
-            WaitForVisibility(window, false, "Completion alert stayed visible after an outside mouse-down.");
+            if (!GetPrivateField<bool>(presenter, "requiresManualClose"))
+                throw new InvalidOperationException("Completion alert cleared the manual-close flag on an outside click.");
+
+            // Clicking the top bar is the explicit in-window close.
+            ClickCloseBar(window);
+            WaitForVisibility(window, false, "Completion alert stayed visible after clicking the top close bar.");
 
             if (GetPrivateField<bool>(presenter, "requiresManualClose"))
-                throw new InvalidOperationException("Outside click dismissal did not clear the manual-close flag.");
+                throw new InvalidOperationException("Top-bar close did not clear the manual-close flag.");
 
             WaitOutDeactivationSuppression();
             InvokePresenterToggle(presenter, CreateTrayIconBoundsForSmoke());
-            WaitForVisibility(window, true, "Tray toggle could not reopen the window after the completion alert was dismissed.");
+            WaitForVisibility(window, true, "Tray toggle could not reopen the window after the completion alert was closed.");
 
             window.Close();
         }

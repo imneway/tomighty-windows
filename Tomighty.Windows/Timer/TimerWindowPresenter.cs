@@ -380,15 +380,19 @@ namespace Tomighty.Windows.Timer
             if (window == null || !window.Visible || IsPinned)
                 return;
 
+            // A finished-timer alert is sticky: only an explicit in-window close
+            // dismisses it, so a stray click on the desktop cannot make the user
+            // miss that the timer ended. A manually opened popup still closes on
+            // an outside click.
+            if (requiresManualClose)
+                return;
+
             if ((DateTime.UtcNow - windowShownTime).TotalMilliseconds < OutsideClickDismissGraceMilliseconds)
                 return;
 
             if (window.Bounds.Contains(screenPoint))
                 return;
 
-            // An explicit click outside the popup is a manual dismissal, so it
-            // also closes the completion alert that ignores focus-based hiding.
-            requiresManualClose = false;
             completionAlertPending = false;
             lastDeactivateHideTime = DateTime.UtcNow;
             window.HideAnimated();

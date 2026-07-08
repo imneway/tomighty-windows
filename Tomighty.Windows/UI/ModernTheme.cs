@@ -46,6 +46,8 @@ namespace Tomighty.Windows.UI
         public static Color ControlTextColor => IsLightTheme ? Color.Black : Color.White;
         public static Color ControlSecondaryTextColor => IsLightTheme ? SystemColors.GrayText : Color.FromArgb(200, 200, 200);
         public static Color TimerTextColor => TextColor;
+        public static Color TimerTopBarHoverColor => IsTimerWindowLightTheme ? Color.FromArgb(20, 0, 0, 0) : Color.FromArgb(24, 255, 255, 255);
+        public static Color TimerTopBarPressedColor => IsTimerWindowLightTheme ? Color.FromArgb(38, 0, 0, 0) : Color.FromArgb(48, 255, 255, 255);
         public static Color SecondaryTextColor => ControlSecondaryTextColor;
         public static Color BorderColor => IsLightTheme ? Color.FromArgb(138, 0, 0, 0) : Color.FromArgb(118, 255, 255, 255);
         public static Color InnerHighlightColor => IsLightTheme ? Color.FromArgb(120, 255, 255, 255) : Color.FromArgb(42, 255, 255, 255);

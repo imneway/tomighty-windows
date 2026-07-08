@@ -67,6 +67,7 @@ namespace Tomighty.Windows.Timer
         private Action secondaryTimerAction;
         private bool pinned;
         private bool closeButtonPressed;
+        private bool closeBarHovered;
         private bool primaryActionButtonHovered;
         private bool primaryActionButtonPressed;
         private bool secondaryActionButtonHovered;
@@ -516,10 +517,10 @@ namespace Tomighty.Windows.Timer
         {
             if (e.Button == MouseButtons.Left)
             {
-                if (GetDropDownBounds().Contains(e.Location))
+                if (GetCloseBarBounds().Contains(e.Location))
                 {
                     closeButtonPressed = true;
-                    Invalidate(GetDropDownBounds());
+                    Invalidate(GetCloseBarBounds());
                     return;
                 }
 
@@ -549,7 +550,7 @@ namespace Tomighty.Windows.Timer
         {
             if (e.Button == MouseButtons.Left && closeButtonPressed)
             {
-                var bounds = GetDropDownBounds();
+                var bounds = GetCloseBarBounds();
                 closeButtonPressed = false;
                 Invalidate(bounds);
 
@@ -590,6 +591,8 @@ namespace Tomighty.Windows.Timer
         {
             base.OnMouseMove(e);
 
+            UpdateCloseBarHover(e.Location);
+
             var primaryBounds = GetPrimaryActionButtonBounds();
             var primaryHovered = primaryBounds.Contains(e.Location);
             var secondaryBounds = GetSecondaryActionButtonBounds();
@@ -617,7 +620,23 @@ namespace Tomighty.Windows.Timer
             if (HasSecondaryAction)
                 Invalidate(secondaryBounds);
 
+            if (closeBarHovered)
+            {
+                closeBarHovered = false;
+                Invalidate(GetCloseBarBounds());
+            }
+
             base.OnMouseLeave(e);
+        }
+
+        private void UpdateCloseBarHover(Point location)
+        {
+            var hovered = GetCloseBarBounds().Contains(location);
+            if (hovered == closeBarHovered)
+                return;
+
+            closeBarHovered = hovered;
+            Invalidate(GetCloseBarBounds());
         }
 
         protected override void OnPaintBackground(PaintEventArgs e)
@@ -651,6 +670,8 @@ namespace Tomighty.Windows.Timer
 
             e.Graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+            DrawCloseBarHighlight(e.Graphics);
 
             if (timeDisplayVisible)
             {
@@ -706,6 +727,29 @@ namespace Tomighty.Windows.Timer
         {
             var padding = ScaleLayout(CompactPadding);
             return new Rectangle(ClientSize.Width - padding - ScaleLayout(DropDownSize), padding, ScaleLayout(DropDownSize), ScaleLayout(TitleHeight));
+        }
+
+        // The whole top strip acts as the close control (not just the chevron),
+        // so it is an easy target for dismissing a sticky completion alert.
+        private Rectangle GetCloseBarBounds()
+        {
+            var padding = ScaleLayout(CompactPadding);
+            return new Rectangle(padding, padding, ClientSize.Width - padding * 2, ScaleLayout(TitleHeight));
+        }
+
+        private void DrawCloseBarHighlight(Graphics graphics)
+        {
+            if (!closeBarHovered && !closeButtonPressed)
+                return;
+
+            var color = closeButtonPressed ? ModernTheme.TimerTopBarPressedColor : ModernTheme.TimerTopBarHoverColor;
+            var bounds = GetCloseBarBounds();
+
+            using (var path = CreateRoundedRectangle(new RectangleF(bounds.X, bounds.Y, bounds.Width, bounds.Height), ScaleLayout(ActionButtonCornerRadius)))
+            using (var brush = new SolidBrush(color))
+            {
+                graphics.FillPath(brush, path);
+            }
         }
 
         private Rectangle GetTitleBounds()
