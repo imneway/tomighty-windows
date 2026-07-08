@@ -732,14 +732,15 @@ namespace Tomighty.Windows.Timer
 
         // The whole top strip acts as the close control (not just the chevron),
         // so it is an easy target for dismissing a sticky completion alert. It
-        // keeps the same inset as the left/right edges (uniform padding) and
-        // grows only downward for a comfortably large hit/hover area, without
-        // moving any other content.
+        // keeps the same inset as the left/right edges horizontally and grows
+        // by the same amount above and below the title band, so the highlight's
+        // top/bottom padding around the text stays symmetric, without moving any
+        // other content.
         private Rectangle GetCloseBarBounds()
         {
             var padding = ScaleLayout(CompactPadding);
             var extra = ScaleLayout(CloseBarVerticalPadding);
-            return new Rectangle(padding, padding, ClientSize.Width - padding * 2, ScaleLayout(TitleHeight) + extra);
+            return new Rectangle(padding, padding - extra, ClientSize.Width - padding * 2, ScaleLayout(TitleHeight) + extra * 2);
         }
 
         private void DrawCloseBarHighlight(Graphics graphics)
