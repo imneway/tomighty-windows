@@ -65,6 +65,15 @@ build\timer-window-smoke.png
 
 这个 smoke 用于确认窗体可以实例化、绘制和关闭。它使用 `DrawToBitmap`，因此能稳定检查布局，但不能完整证明桌面 DWM 的 Mica/Acrylic 实时效果。
 
+迭代行为断言时可跳过较慢的截图环节：
+
+```powershell
+$env:SMOKE_SKIP_CAPTURES = '1'
+powershell -STA -NoProfile -ExecutionPolicy Bypass -File '.\tools\smoke-timer-window.ps1' -Configuration Debug
+```
+
+烟测宿主使用 `UnhandledExceptionMode.ThrowException`，消息循环里的异常会直接崩溃并输出堆栈，而不是卡在 WinForms 的异常对话框上。
+
 ## 发布
 
 Portable ZIP：

@@ -17,7 +17,7 @@ namespace Tomighty.Windows.Timer
     internal class TimerWindowPresenter
     {
         private const int TrayPopupGap = 10;
-        private const int LeftMouseButton = 0x01;
+        private const int OutsideClickDismissGraceMilliseconds = 250;
         private static readonly TimeSpan CompletionAcknowledgementAutoHideDelay = TimeSpan.FromMilliseconds(400);
 
         private readonly ICountdownClock countdownClock;
@@ -44,8 +44,7 @@ namespace Tomighty.Windows.Timer
         private Rectangle lastTrayIconBounds;
         private DateTime lastDeactivateHideTime = DateTime.MinValue;
         private DateTime windowShownTime = DateTime.MinValue;
-        private bool outsideClickDismissArmed;
-        private bool leftMouseButtonWasDown;
+        private readonly GlobalLeftMouseDownMonitor outsideClickMonitor;
         private DateTime completionAcknowledgedTime = DateTime.MinValue;
         private bool completionAlertPending;
 
@@ -76,6 +75,7 @@ namespace Tomighty.Windows.Timer
             longBreakInterruptedState = new BreakInterruptedState("Long break interrupted", pomodoroEngine);
 
             currentState = idleState;
+            outsideClickMonitor = new GlobalLeftMouseDownMonitor(OnGlobalLeftMouseDown);
             window = CreateTimerWindow();
             currentState.Apply(window, countdownClock.RemainingTime);
             EnsureWindowHandle();
@@ -103,7 +103,6 @@ namespace Tomighty.Windows.Timer
             window.LostFocus += OnLostFocus;
             window.Deactivate += OnWindowDeactivate;
             window.VisibleChanged += OnWindowVisibleChanged;
-            window.UserMouseInteracted += OnWindowUserMouseInteracted;
             window.PinButton.Click += OnPinButtonClick;
             window.CloseButton.Click += OnCloseButtonClick;
 
@@ -146,8 +145,7 @@ namespace Tomighty.Windows.Timer
                 if (!window.IsHandleCreated && window.Handle == IntPtr.Zero)
                     return;
 
-                Point location = GetLocationAboveTrayIcon();
-                window.Show(location);
+                window.Show(GetLocationAboveTrayIcon);
                 ResetOutsideClickTracking();
 
                 if (shouldCreateWindow)
@@ -335,7 +333,14 @@ namespace Tomighty.Windows.Timer
         private void OnWindowVisibleChanged(object sender, System.EventArgs e)
         {
             if (window.Visible)
+            {
                 window.Focus();
+                outsideClickMonitor.Start();
+            }
+            else
+            {
+                outsideClickMonitor.Stop();
+            }
         }
 
         private void OnLostFocus(object sender, System.EventArgs e)
@@ -353,15 +358,49 @@ namespace Tomighty.Windows.Timer
             }
         }
 
-        private void OnWindowUserMouseInteracted(object sender, EventArgs e)
+        private void OnGlobalLeftMouseDown(Point screenPoint)
         {
-            outsideClickDismissArmed = true;
-            leftMouseButtonWasDown = IsLeftMouseButtonDown();
+            // Called on the hook thread; only marshal to the window thread here.
+            var target = window;
+            if (target == null || !target.IsHandleCreated)
+                return;
+
+            try
+            {
+                target.BeginInvoke((Action)(() => DismissOnOutsideClick(screenPoint)));
+            }
+            catch (InvalidOperationException)
+            {
+                // The window handle was torn down between the check and the call.
+            }
+        }
+
+        private void DismissOnOutsideClick(Point screenPoint)
+        {
+            if (window == null || !window.Visible || IsPinned)
+                return;
+
+            // A finished-timer alert is sticky: only an explicit in-window close
+            // dismisses it, so a stray click on the desktop cannot make the user
+            // miss that the timer ended. A manually opened popup still closes on
+            // an outside click.
+            if (requiresManualClose)
+                return;
+
+            if ((DateTime.UtcNow - windowShownTime).TotalMilliseconds < OutsideClickDismissGraceMilliseconds)
+                return;
+
+            if (window.Bounds.Contains(screenPoint))
+                return;
+
+            completionAlertPending = false;
+            lastDeactivateHideTime = DateTime.UtcNow;
+            window.HideAnimated();
         }
 
         private void HideIfFocusMovedOutside()
         {
-            if (!ShouldAutoHideWindow() && !ShouldHideForOutsideMouseClick())
+            if (!ShouldAutoHideWindow())
                 return;
 
             lastDeactivateHideTime = DateTime.UtcNow;
@@ -389,62 +428,9 @@ namespace Tomighty.Windows.Timer
             return !WindowHasForegroundFocus();
         }
 
-        private bool ShouldHideForOutsideMouseClick()
-        {
-            if (window == null || !window.Visible || !CanAutoHideWindow || WasCompletionJustAcknowledged())
-                return false;
-
-            if ((DateTime.UtcNow - windowShownTime).TotalMilliseconds < 250)
-            {
-                UpdateLeftMouseButtonTracking();
-                return false;
-            }
-
-            Point clickPoint;
-            if (!TryConsumeCompletedLeftMouseClick(out clickPoint))
-                return false;
-
-            if (window.Bounds.Contains(clickPoint))
-            {
-                outsideClickDismissArmed = true;
-                return false;
-            }
-
-            return outsideClickDismissArmed || !WindowHasForegroundFocus();
-        }
-
         private void ResetOutsideClickTracking()
         {
             windowShownTime = DateTime.UtcNow;
-            outsideClickDismissArmed = false;
-            leftMouseButtonWasDown = IsLeftMouseButtonDown();
-        }
-
-        private bool TryConsumeCompletedLeftMouseClick(out Point clickPoint)
-        {
-            var isDown = IsLeftMouseButtonDown();
-            var wasDown = leftMouseButtonWasDown;
-
-            leftMouseButtonWasDown = isDown;
-
-            if (wasDown && !isDown)
-            {
-                clickPoint = Cursor.Position;
-                return true;
-            }
-
-            clickPoint = Point.Empty;
-            return false;
-        }
-
-        private void UpdateLeftMouseButtonTracking()
-        {
-            leftMouseButtonWasDown = IsLeftMouseButtonDown();
-        }
-
-        private static bool IsLeftMouseButtonDown()
-        {
-            return (GetAsyncKeyState(LeftMouseButton) & unchecked((short)0x8000)) != 0;
         }
 
         private bool WasCompletionJustAcknowledged()
@@ -493,9 +479,6 @@ namespace Tomighty.Windows.Timer
 
         [DllImport("user32.dll")]
         private static extern int GetDpiForWindow(IntPtr hWnd);
-
-        [DllImport("user32.dll")]
-        private static extern short GetAsyncKeyState(int virtualKey);
 
         private void EnsureWindow()
         {
@@ -558,11 +541,11 @@ namespace Tomighty.Windows.Timer
 
         private void ShowCompletionAlertNow()
         {
-            var location = window.Visible && IsPinned
-                ? window.Location
-                : GetCompletionAlertLocation();
+            if (window.Visible && IsPinned)
+                window.Show(() => window.Location);
+            else
+                window.Show(GetCompletionAlertLocation);
 
-            window.Show(location);
             ResetOutsideClickTracking();
         }
 
@@ -837,6 +820,183 @@ namespace Tomighty.Windows.Timer
             {
                 pomodoroEngine.StartTimer(IntervalType.Pomodoro);
             }
+        }
+
+        private sealed class GlobalLeftMouseDownMonitor
+        {
+            private const int WH_MOUSE_LL = 14;
+            private const int WM_LBUTTONDOWN = 0x0201;
+            private const int WM_QUIT = 0x0012;
+            private const uint PM_NOREMOVE = 0x0000;
+
+            private readonly Action<Point> onLeftMouseDown;
+            private readonly LowLevelMouseProc hookProc;
+            private readonly object threadLock = new object();
+            private HookSession session;
+
+            public GlobalLeftMouseDownMonitor(Action<Point> onLeftMouseDown)
+            {
+                this.onLeftMouseDown = onLeftMouseDown;
+
+                // Keep the delegate in a field so the GC cannot collect it
+                // while the native hook still references it.
+                hookProc = HookProc;
+            }
+
+            // The hook runs on a dedicated thread with its own message pump.
+            // Hosting it on the UI thread stalls the system-wide mouse input
+            // pipeline whenever that thread stops pumping (e.g. during the
+            // modal window-drag loop), which Windows punishes by silently
+            // dropping the hook.
+            public void Start()
+            {
+                lock (threadLock)
+                {
+                    if (session != null)
+                        return;
+
+                    session = new HookSession();
+                    var thread = new System.Threading.Thread(RunHookLoop)
+                    {
+                        IsBackground = true,
+                        Name = "TimerPopupMouseHook"
+                    };
+                    thread.Start(session);
+                }
+            }
+
+            public void Stop()
+            {
+                HookSession stoppingSession;
+
+                lock (threadLock)
+                {
+                    if (session == null)
+                        return;
+
+                    stoppingSession = session;
+                    session = null;
+                }
+
+                stoppingSession.Ready.Wait(1000);
+                PostThreadMessage(stoppingSession.ThreadId, WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+            }
+
+            private void RunHookLoop(object state)
+            {
+                var currentSession = (HookSession)state;
+                currentSession.ThreadId = GetCurrentThreadId();
+
+                // Force the creation of this thread's message queue so that
+                // PostThreadMessage from Stop cannot be lost.
+                NativeMessage probe;
+                PeekMessage(out probe, IntPtr.Zero, 0, 0, PM_NOREMOVE);
+
+                var hookHandle = SetWindowsHookEx(WH_MOUSE_LL, hookProc, GetModuleHandle(null), 0);
+                currentSession.Ready.Set();
+
+                try
+                {
+                    NativeMessage message;
+                    while (GetMessage(out message, IntPtr.Zero, 0, 0) > 0)
+                    {
+                        TranslateMessage(ref message);
+                        DispatchMessage(ref message);
+                    }
+                }
+                finally
+                {
+                    if (hookHandle != IntPtr.Zero)
+                        UnhookWindowsHookEx(hookHandle);
+                }
+            }
+
+            private IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam)
+            {
+                if (code >= 0 && (int)wParam == WM_LBUTTONDOWN)
+                {
+                    var data = (MouseLowLevelHookData)Marshal.PtrToStructure(lParam, typeof(MouseLowLevelHookData));
+
+                    try
+                    {
+                        onLeftMouseDown(new Point(data.Point.X, data.Point.Y));
+                    }
+                    catch
+                    {
+                        // A low-level hook callback must never let an exception
+                        // escape into the global input chain.
+                    }
+                }
+
+                // The hook-handle argument is ignored for low-level hooks.
+                return CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
+            }
+
+            private sealed class HookSession
+            {
+                public readonly System.Threading.ManualResetEventSlim Ready = new System.Threading.ManualResetEventSlim(false);
+                public uint ThreadId;
+            }
+
+            private delegate IntPtr LowLevelMouseProc(int code, IntPtr wParam, IntPtr lParam);
+
+            [StructLayout(LayoutKind.Sequential)]
+            private struct MouseLowLevelHookData
+            {
+                public NativePoint Point;
+                public uint MouseData;
+                public uint Flags;
+                public uint Time;
+                public IntPtr ExtraInfo;
+            }
+
+            [StructLayout(LayoutKind.Sequential)]
+            private struct NativePoint
+            {
+                public int X;
+                public int Y;
+            }
+
+            [StructLayout(LayoutKind.Sequential)]
+            private struct NativeMessage
+            {
+                public IntPtr WindowHandle;
+                public uint Message;
+                public IntPtr WParam;
+                public IntPtr LParam;
+                public uint Time;
+                public NativePoint Point;
+            }
+
+            [DllImport("user32.dll", SetLastError = true)]
+            private static extern IntPtr SetWindowsHookEx(int hookType, LowLevelMouseProc callback, IntPtr module, uint threadId);
+
+            [DllImport("user32.dll")]
+            private static extern bool UnhookWindowsHookEx(IntPtr hookHandle);
+
+            [DllImport("user32.dll")]
+            private static extern IntPtr CallNextHookEx(IntPtr hookHandle, int code, IntPtr wParam, IntPtr lParam);
+
+            [DllImport("user32.dll")]
+            private static extern int GetMessage(out NativeMessage message, IntPtr windowHandle, uint filterMin, uint filterMax);
+
+            [DllImport("user32.dll")]
+            private static extern bool PeekMessage(out NativeMessage message, IntPtr windowHandle, uint filterMin, uint filterMax, uint removeFlags);
+
+            [DllImport("user32.dll")]
+            private static extern bool TranslateMessage(ref NativeMessage message);
+
+            [DllImport("user32.dll")]
+            private static extern IntPtr DispatchMessage(ref NativeMessage message);
+
+            [DllImport("user32.dll")]
+            private static extern bool PostThreadMessage(uint threadId, uint message, IntPtr wParam, IntPtr lParam);
+
+            [DllImport("kernel32.dll")]
+            private static extern uint GetCurrentThreadId();
+
+            [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+            private static extern IntPtr GetModuleHandle(string moduleName);
         }
 
         private class DragAroundController

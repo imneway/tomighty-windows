@@ -8,6 +8,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Text;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
@@ -45,6 +46,8 @@ namespace Tomighty.Windows.UI
         public static Color ControlTextColor => IsLightTheme ? Color.Black : Color.White;
         public static Color ControlSecondaryTextColor => IsLightTheme ? SystemColors.GrayText : Color.FromArgb(200, 200, 200);
         public static Color TimerTextColor => TextColor;
+        public static Color TimerTopBarHoverColor => IsTimerWindowLightTheme ? Color.FromArgb(20, 0, 0, 0) : Color.FromArgb(24, 255, 255, 255);
+        public static Color TimerTopBarPressedColor => IsTimerWindowLightTheme ? Color.FromArgb(38, 0, 0, 0) : Color.FromArgb(48, 255, 255, 255);
         public static Color SecondaryTextColor => ControlSecondaryTextColor;
         public static Color BorderColor => IsLightTheme ? Color.FromArgb(138, 0, 0, 0) : Color.FromArgb(118, 255, 255, 255);
         public static Color InnerHighlightColor => IsLightTheme ? Color.FromArgb(120, 255, 255, 255) : Color.FromArgb(42, 255, 255, 255);
@@ -122,8 +125,59 @@ namespace Tomighty.Windows.UI
         public static void ApplyContextMenu(ContextMenuStrip menu)
         {
             ApplyContextMenuColors(menu);
-            menu.Opening += (sender, args) => ApplyContextMenuColors(menu);
-            RegisterThemeChange(menu, () => ApplyContextMenuColors(menu));
+            ScaleContextMenuToCursorDpi(menu);
+            menu.Opening += (sender, args) =>
+            {
+                // Colors first, then scaling: ApplyContextMenuColors rewrites the
+                // item fonts at the base point size, so the DPI rescale has to run
+                // last or it gets clobbered.
+                ApplyContextMenuColors(menu);
+                ScaleContextMenuToCursorDpi(menu);
+            };
+            RegisterThemeChange(menu, () =>
+            {
+                ApplyContextMenuColors(menu);
+                ScaleContextMenuToCursorDpi(menu);
+            });
+        }
+
+        // A ContextMenuStrip does not follow per-monitor DPI in .NET Framework
+        // 4.8: it stays frozen at the size it first laid out at, so it looks too
+        // small on a higher-DPI monitor. Rescale its fonts to the DPI of the
+        // monitor under the cursor (where it is about to appear) each time it
+        // opens; ToolStrip auto-sizes its items from the font.
+        private static void ScaleContextMenuToCursorDpi(ContextMenuStrip menu)
+        {
+            var scale = GetCursorDpiScale();
+            var baseFont = SystemFonts.MessageBoxFont;
+            var family = baseFont.FontFamily;
+            var pixelSize = baseFont.SizeInPoints * (96f / 72f) * scale;
+
+            menu.Font = new Font(family, pixelSize, FontStyle.Regular, GraphicsUnit.Pixel);
+            foreach (ToolStripItem item in menu.Items)
+            {
+                var style = item.Font != null ? item.Font.Style : FontStyle.Regular;
+                item.Font = new Font(family, pixelSize, style, GraphicsUnit.Pixel);
+            }
+
+            menu.PerformLayout();
+        }
+
+        private static float GetCursorDpiScale()
+        {
+            try
+            {
+                var cursor = Cursor.Position;
+                var monitor = MonitorFromPoint(new POINTStruct { X = cursor.X, Y = cursor.Y }, MonitorDefaultToNearest);
+                uint dpiX, dpiY;
+                if (GetDpiForMonitor(monitor, MdtEffectiveDpi, out dpiX, out dpiY) == 0 && dpiX > 0)
+                    return dpiX / 96f;
+            }
+            catch
+            {
+            }
+
+            return 1f;
         }
 
         public static void StyleDefaultButton(Button button)
@@ -342,6 +396,22 @@ namespace Tomighty.Windows.UI
             {
                 return true;
             }
+        }
+
+        private const uint MonitorDefaultToNearest = 0x00000002;
+        private const int MdtEffectiveDpi = 0;
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromPoint(POINTStruct pt, uint flags);
+
+        [DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINTStruct
+        {
+            public int X;
+            public int Y;
         }
 
         private static bool IsFontInstalled(string fontName)
