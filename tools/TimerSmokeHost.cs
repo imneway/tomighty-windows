@@ -449,16 +449,10 @@ namespace Tomighty.Tools
             var window = GetPresenterWindow(presenter);
 
             eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
-            PumpUi();
-
-            if (window.Visible)
-                throw new InvalidOperationException("Completion alert was shown while a fullscreen window was active.");
+            WaitForVisibility(window, false, "Completion alert was shown while a fullscreen window was active.");
 
             fullscreenDetector.IsFullscreen = false;
-            PumpUi();
-
-            if (!window.Visible)
-                throw new InvalidOperationException("Completion alert did not appear after the fullscreen window exited.");
+            WaitForVisibility(window, true, "Completion alert did not appear after the fullscreen window exited.");
 
             AssertTimerWindowState(
                 window,
@@ -487,24 +481,15 @@ namespace Tomighty.Tools
             var window = GetPresenterWindow(presenter);
 
             eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
-            PumpUi();
-
-            if (!window.Visible)
-                throw new InvalidOperationException("Completion alert did not appear when no fullscreen window was active.");
+            WaitForVisibility(window, true, "Completion alert did not appear when no fullscreen window was active.");
 
             for (var index = 0; index < 2; index++)
             {
                 fullscreenDetector.IsFullscreen = true;
-                PumpUi();
-
-                if (window.Visible)
-                    throw new InvalidOperationException("Visible completion alert was not hidden after a fullscreen window became active.");
+                WaitForVisibility(window, false, "Visible completion alert was not hidden after a fullscreen window became active.");
 
                 fullscreenDetector.IsFullscreen = false;
-                PumpUi();
-
-                if (!window.Visible)
-                    throw new InvalidOperationException("Hidden completion alert did not return after the fullscreen window exited.");
+                WaitForVisibility(window, true, "Hidden completion alert did not return after the fullscreen window exited.");
             }
 
             window.Close();
@@ -521,10 +506,7 @@ namespace Tomighty.Tools
             var window = GetPresenterWindow(presenter);
 
             eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
-            PumpUi();
-
-            if (!window.Visible)
-                throw new InvalidOperationException("Completion alert was suppressed even though the fullscreen preference is off.");
+            WaitForVisibility(window, true, "Completion alert was suppressed even though the fullscreen preference is off.");
 
             window.Close();
         }
@@ -546,9 +528,8 @@ namespace Tomighty.Tools
             AssertWindowAnchoredToTrayIcon(window, trayIconBounds, "idle");
 
             ClickOutsideWindow(window, backdrop);
-            PumpUi();
-            if (window.Visible)
-                throw new InvalidOperationException("Regular tray popup stayed visible after an outside click.");
+            WaitForVisibility(window, false, "Regular tray popup stayed visible after an outside click.");
+            WaitOutDeactivationSuppression();
 
             InvokePresenterToggle(presenter, trayIconBounds);
             PumpUi();
@@ -563,9 +544,8 @@ namespace Tomighty.Tools
                 throw new InvalidOperationException("Regular tray popup hid after an inside mouse-down.");
 
             InvokeGlobalLeftMouseDown(presenter, new Point(backdrop.Left + 12, backdrop.Top + 12));
-            PumpUi();
-            if (window.Visible)
-                throw new InvalidOperationException("Regular tray popup stayed visible after an outside mouse-down through the hook seam.");
+            WaitForVisibility(window, false, "Regular tray popup stayed visible after an outside mouse-down through the hook seam.");
+            WaitOutDeactivationSuppression();
 
             InvokePresenterToggle(presenter, trayIconBounds);
             PumpUi();
@@ -612,17 +592,14 @@ namespace Tomighty.Tools
             // are not deliverable when the session is locked, and the plain
             // tray popup test already covers real end-to-end click delivery.
             InvokeGlobalLeftMouseDown(presenter, new Point(backdrop.Left + 12, backdrop.Top + 12));
-            PumpUi();
-            if (window.Visible)
-                throw new InvalidOperationException("Completion alert stayed visible after an outside mouse-down.");
+            WaitForVisibility(window, false, "Completion alert stayed visible after an outside mouse-down.");
 
             if (GetPrivateField<bool>(presenter, "requiresManualClose"))
                 throw new InvalidOperationException("Outside click dismissal did not clear the manual-close flag.");
 
+            WaitOutDeactivationSuppression();
             InvokePresenterToggle(presenter, CreateTrayIconBoundsForSmoke());
-            PumpUi();
-            if (!window.Visible)
-                throw new InvalidOperationException("Tray toggle could not reopen the window after the completion alert was dismissed.");
+            WaitForVisibility(window, true, "Tray toggle could not reopen the window after the completion alert was dismissed.");
 
             window.Close();
         }
@@ -896,13 +873,20 @@ namespace Tomighty.Tools
 
         private static void AssertTimerTypography(TimerWindow window)
         {
-            var titleLabel = GetPrivateField<Control>(window, "titleLabel");
-            var timeLabel = GetPrivateField<Control>(window, "timeLabel");
-            var timerButton = GetPrivateField<Control>(window, "timerButton");
+            // Fonts are pixel-unit and scaled by layoutScale so they track the
+            // monitor DPI in lockstep with the layout boxes (the paint graphics
+            // DPI is frozen and cannot be relied on).
+            var layoutScale = GetPrivateField<float>(window, "layoutScale");
+            AssertScaledFont(window, "titleLabel", 9.5f, layoutScale);
+            AssertScaledFont(window, "timeLabel", 36f, layoutScale);
+            AssertScaledFont(window, "timerButton", 9.5f, layoutScale);
+        }
 
-            AssertNear("titleFontSize", 9.5f, titleLabel.Font.SizeInPoints, 0.1f);
-            AssertNear("timeFontSize", 36f, timeLabel.Font.SizeInPoints, 0.1f);
-            AssertNear("timerButtonFontSize", 9.5f, timerButton.Font.SizeInPoints, 0.1f);
+        private static void AssertScaledFont(TimerWindow window, string fieldName, float basePointSize, float layoutScale)
+        {
+            var font = GetPrivateField<Control>(window, fieldName).Font;
+            AssertEqual(fieldName + "FontUnit", GraphicsUnit.Pixel, font.Unit);
+            AssertNear(fieldName + "FontPx", basePointSize * (96f / 72f) * layoutScale, font.Size, 0.5f);
         }
 
         private static void AssertTimerLayout(TimerWindow window, float expectedScale)
@@ -1045,6 +1029,33 @@ namespace Tomighty.Tools
                 Application.DoEvents();
                 Thread.Sleep(80);
             }
+        }
+
+        // Completion-alert show/hide on fullscreen transitions is driven by a
+        // 150 ms WinForms timer, and WM_TIMER is low priority, so a single fixed
+        // pump can miss it under load. Pump until the expected visibility is
+        // reached (or time out) instead of assuming one PumpUi is enough.
+        private static void WaitForVisibility(TimerWindow window, bool expectedVisible, string failureMessage)
+        {
+            for (var index = 0; index < 40; index++)
+            {
+                Application.DoEvents();
+                if (window.Visible == expectedVisible)
+                    return;
+                Thread.Sleep(80);
+            }
+
+            if (window.Visible != expectedVisible)
+                throw new InvalidOperationException(failureMessage);
+        }
+
+        // After an outside-click dismissal the presenter records the hide time
+        // and suppresses a tray toggle that lands within 250 ms, so the same
+        // click that dismisses the popup does not immediately reopen it. A test
+        // that means to reopen must wait that window out first.
+        private static void WaitOutDeactivationSuppression()
+        {
+            Thread.Sleep(300);
         }
 
         private static TimerWindow CreateTimerWindow(TimerStateShot shot, Point location, IWin32Window owner)

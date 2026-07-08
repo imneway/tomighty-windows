@@ -53,6 +53,7 @@ namespace Tomighty.Windows.Timer
         private const uint SPI_GETUIEFFECTS = 0x103E;
         private const float TitleOnlyFontSize = 13f;
         private const float MinLayoutScale = 0.25f;
+        private const float PointToPixel = 96f / 72f;
 
         private enum ActionButtonTone
         {
@@ -254,9 +255,24 @@ namespace Tomighty.Windows.Timer
 
         private void ApplyCompactFonts()
         {
-            titleLabel.Font = ModernTheme.TextFont(9.5f);
-            timeLabel.Font = ModernTheme.DisplayMediumFont(36f);
-            timerButton.Font = ModernTheme.MediumTextFont(9.5f);
+            titleLabel.Font = ScaleFont(ModernTheme.TextFont(9.5f));
+            timeLabel.Font = ScaleFont(ModernTheme.DisplayMediumFont(36f));
+            timerButton.Font = ScaleFont(ModernTheme.MediumTextFont(9.5f));
+        }
+
+        // The window paints all of its own text and draws it against the paint
+        // graphics, whose DPI is frozen at the value the window was created with
+        // (AutoScaleMode.None never updates DeviceDpi). Point-size fonts would
+        // therefore render at the wrong size after the monitor DPI changes,
+        // while the layout boxes correctly follow layoutScale. Convert to a
+        // pixel-size font scaled by layoutScale so fonts and boxes always agree.
+        private Font ScaleFont(Font baseFont)
+        {
+            using (baseFont)
+            {
+                var pixelSize = baseFont.SizeInPoints * PointToPixel * layoutScale;
+                return new Font(baseFont.Name, pixelSize, baseFont.Style, GraphicsUnit.Pixel);
+            }
         }
 
         private void UpdateCompactBounds()
@@ -645,7 +661,7 @@ namespace Tomighty.Windows.Timer
             {
                 DrawAlignedText(e.Graphics, titleText, titleLabel.Font, GetTitleBounds(), StringAlignment.Center, StringAlignment.Center);
 
-                using (var messageFont = ModernTheme.TextFont(18f))
+                using (var messageFont = ScaleFont(ModernTheme.TextFont(18f)))
                 {
                     DrawAlignedText(e.Graphics, messageText, messageFont, GetMessageBounds(), StringAlignment.Center, StringAlignment.Center, true);
                 }
@@ -680,7 +696,7 @@ namespace Tomighty.Windows.Timer
         {
             var bounds = GetTitleOnlyTitleBounds();
 
-            using (var font = ModernTheme.TextFont(TitleOnlyFontSize))
+            using (var font = ScaleFont(ModernTheme.TextFont(TitleOnlyFontSize)))
             {
                 DrawAlignedText(graphics, titleText, font, bounds, StringAlignment.Center, StringAlignment.Center, false);
             }
@@ -831,7 +847,7 @@ namespace Tomighty.Windows.Timer
                     ? PushButtonState.Hot
                     : PushButtonState.Normal;
 
-            DrawActionButtonSurface(graphics, bounds, state, color);
+            DrawActionButtonSurface(graphics, bounds, state, color, layoutScale);
 
             using (var brush = new SolidBrush(ModernTheme.ActionButtonTextColor))
             using (var format = new StringFormat(StringFormatFlags.NoWrap))
@@ -843,11 +859,10 @@ namespace Tomighty.Windows.Timer
             }
         }
 
-        private static void DrawActionButtonSurface(Graphics graphics, Rectangle bounds, PushButtonState state, Color normalColor)
+        private static void DrawActionButtonSurface(Graphics graphics, Rectangle bounds, PushButtonState state, Color normalColor, float scale)
         {
             var fill = ResolveActionButtonFillColor(state, normalColor);
 
-            var scale = graphics.DpiX / 96f;
             var radius = Math.Max(1f, ActionButtonCornerRadius * scale);
             var pathBounds = new RectangleF(bounds.X, bounds.Y, bounds.Width, bounds.Height);
             var borderBounds = new RectangleF(
@@ -982,7 +997,7 @@ namespace Tomighty.Windows.Timer
 
         private void DrawDropDownArrow(Graphics graphics, Rectangle bounds)
         {
-            var scale = graphics.DpiX / 96f;
+            var scale = layoutScale;
             var width = 8f * scale;
             var height = 4f * scale;
             var centerX = bounds.Left + bounds.Width / 2f;
