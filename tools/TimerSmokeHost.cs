@@ -83,6 +83,8 @@ namespace Tomighty.Tools
                 AssertTrayAnchoredPopupPlacement(backdrop);
                 Progress("completion-outside-click");
                 AssertCompletionAlertLocksOutsideClickAndClosesViaTopBar(backdrop);
+                Progress("stale-break-skip");
+                AssertStaleBreakSuggestionOffersNewPomodoro();
                 Progress("dpi-message");
                 AssertDpiChangedMessageKeepsCompactLayout(backdrop);
                 Progress("all-asserts-done");
@@ -253,6 +255,17 @@ namespace Tomighty.Tools
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 null,
                 new object[] { engine, countdownClock, eventHub, preferences, fullscreenWindowDetector },
+                null);
+        }
+
+        private static object CreateTimerWindowPresenter(IPomodoroEngine engine, ICountdownClock countdownClock, IEventHub eventHub, IUserPreferences preferences, IFullscreenWindowDetector fullscreenWindowDetector, FakeClock clock)
+        {
+            var presenterType = typeof(TimerWindow).Assembly.GetType("Tomighty.Windows.Timer.TimerWindowPresenter", true);
+            return Activator.CreateInstance(
+                presenterType,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                new object[] { engine, countdownClock, eventHub, preferences, fullscreenWindowDetector, new Func<DateTime>(() => clock.UtcNow) },
                 null);
         }
 
@@ -616,6 +629,79 @@ namespace Tomighty.Tools
             WaitOutDeactivationSuppression();
             InvokePresenterToggle(presenter, CreateTrayIconBoundsForSmoke());
             WaitForVisibility(window, true, "Tray toggle could not reopen the window after the completion alert was closed.");
+
+            window.Close();
+        }
+
+        private static void AssertStaleBreakSuggestionOffersNewPomodoro()
+        {
+            SetThemeOverride(true);
+
+            var eventHub = new SynchronousEventHub();
+            var timer = new Tomighty.Timer(eventHub);
+            var preferences = new SmokeUserPreferences();
+            var engine = new PomodoroEngine(timer, preferences, eventHub);
+            var clock = new FakeClock(new DateTime(2026, 1, 1, 9, 0, 0, DateTimeKind.Utc));
+            var presenter = CreateTimerWindowPresenter(engine, timer, eventHub, preferences, new WindowedDetector(), clock);
+            var window = GetPresenterWindow(presenter);
+            var trayIconBounds = CreateTrayIconBoundsForSmoke();
+
+            eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
+            WaitForVisibility(window, true, "Completion alert did not appear when the pomodoro finished.");
+            AssertTimerWindowState(window, "Pomodoro finished", false, "Short", BreakActionButtonBackColor, "Long", NeutralActionButtonBackColor, "Take a break");
+
+            ClickCloseBar(window);
+            WaitForVisibility(window, false, "Completion alert stayed visible after clicking the top close bar.");
+            WaitOutDeactivationSuppression();
+
+            // Still inside the break's own length: the break is on offer.
+            clock.Advance(TimeSpan.FromSeconds(4 * 60 + 59));
+            InvokePresenterToggle(presenter, trayIconBounds);
+            WaitForVisibility(window, true, "Tray toggle did not reopen the popup before the grace period elapsed.");
+            AssertTimerWindowState(window, "Pomodoro finished", false, "Short", BreakActionButtonBackColor, "Long", NeutralActionButtonBackColor, "Take a break");
+
+            ClickCloseBar(window);
+            WaitForVisibility(window, false, "Popup stayed visible after clicking the top close bar.");
+            WaitOutDeactivationSuppression();
+
+            // Past the short break's length: the break is treated as skipped.
+            clock.Advance(TimeSpan.FromMinutes(2));
+            InvokePresenterToggle(presenter, trayIconBounds);
+            WaitForVisibility(window, true, "Tray toggle did not reopen the popup after the grace period elapsed.");
+            AssertTimerWindowState(window, "Pomodoro finished", false, "Start Pomodoro", ActionButtonBackColor, "", null, "");
+
+            window.Close();
+
+            AssertStaleCompletionAlertIsDroppedInsteadOfPopped();
+        }
+
+        private static void AssertStaleCompletionAlertIsDroppedInsteadOfPopped()
+        {
+            var eventHub = new SynchronousEventHub();
+            var timer = new Tomighty.Timer(eventHub);
+            var preferences = new SmokeUserPreferences { SuppressPopupInFullscreenApps = true };
+            var engine = new PomodoroEngine(timer, preferences, eventHub);
+            var fullscreenDetector = new ToggleFullscreenDetector { IsFullscreen = true };
+            var clock = new FakeClock(new DateTime(2026, 1, 1, 9, 0, 0, DateTimeKind.Utc));
+            var presenter = CreateTimerWindowPresenter(engine, timer, eventHub, preferences, fullscreenDetector, clock);
+            var window = GetPresenterWindow(presenter);
+
+            eventHub.Publish(new TimerStopped(IntervalType.Pomodoro, preferences.GetIntervalDuration(IntervalType.Pomodoro), Duration.Zero));
+            WaitForVisibility(window, false, "Completion alert was shown while a fullscreen window was active.");
+
+            clock.Advance(TimeSpan.FromMinutes(10));
+            WaitForCondition(
+                () => !GetPrivateField<bool>(presenter, "requiresManualClose"),
+                "A completion alert held back behind a fullscreen window was still pending after its break window passed.");
+
+            fullscreenDetector.IsFullscreen = false;
+            PumpUi();
+            if (window.Visible)
+                throw new InvalidOperationException("A stale completion alert popped after the fullscreen window exited.");
+
+            InvokePresenterToggle(presenter, CreateTrayIconBoundsForSmoke());
+            WaitForVisibility(window, true, "Tray toggle did not open the popup after the stale completion alert was dropped.");
+            AssertTimerWindowState(window, "Pomodoro finished", false, "Start Pomodoro", ActionButtonBackColor, "", null, "");
 
             window.Close();
         }
@@ -1065,6 +1151,20 @@ namespace Tomighty.Tools
                 throw new InvalidOperationException(failureMessage);
         }
 
+        private static void WaitForCondition(Func<bool> condition, string failureMessage)
+        {
+            for (var index = 0; index < 40; index++)
+            {
+                Application.DoEvents();
+                if (condition())
+                    return;
+                Thread.Sleep(80);
+            }
+
+            if (!condition())
+                throw new InvalidOperationException(failureMessage);
+        }
+
         // After an outside-click dismissal the presenter records the hide time
         // and suppresses a tray toggle that lands within 250 ms, so the same
         // click that dismisses the popup does not immediately reopen it. A test
@@ -1118,7 +1218,8 @@ namespace Tomighty.Tools
                 TimerStateShot.Message("06-break-finished", "Break Finished", "Start Pomodoro", ActionButtonBackColor),
                 TimerStateShot.Message("07-pomodoro-interrupted", "Pomodoro interrupted", "Restart", NeutralActionButtonBackColor),
                 TimerStateShot.Message("08-short-break-interrupted", "Short break interrupted", "Start Pomodoro", ActionButtonBackColor),
-                TimerStateShot.Message("09-long-break-interrupted", "Long break interrupted", "Start Pomodoro", ActionButtonBackColor)
+                TimerStateShot.Message("09-long-break-interrupted", "Long break interrupted", "Start Pomodoro", ActionButtonBackColor),
+                TimerStateShot.Message("10-break-skipped", "Pomodoro finished", "Start Pomodoro", ActionButtonBackColor)
             };
         }
 
@@ -1232,6 +1333,21 @@ namespace Tomighty.Tools
             public void Update(Action<IMutableUserPreferences> action)
             {
                 throw new NotSupportedException();
+            }
+        }
+
+        private sealed class FakeClock
+        {
+            public FakeClock(DateTime utcNow)
+            {
+                UtcNow = utcNow;
+            }
+
+            public DateTime UtcNow { get; private set; }
+
+            public void Advance(TimeSpan amount)
+            {
+                UtcNow += amount;
             }
         }
 

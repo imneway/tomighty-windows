@@ -18,8 +18,10 @@ namespace Tomighty.Windows.Timer
     {
         private const int TrayPopupGap = 10;
         private const int OutsideClickDismissGraceMilliseconds = 250;
+        private const int MinimumBreakSkipGraceSeconds = 5 * 60;
         private static readonly TimeSpan CompletionAcknowledgementAutoHideDelay = TimeSpan.FromMilliseconds(400);
 
+        private readonly IPomodoroEngine pomodoroEngine;
         private readonly ICountdownClock countdownClock;
         private readonly IUserPreferences userPreferences;
         private readonly IFullscreenWindowDetector fullscreenWindowDetector;
@@ -28,6 +30,7 @@ namespace Tomighty.Windows.Timer
         private readonly IWindowState shortBreakState;
         private readonly IWindowState longBreakState;
         private readonly IWindowState pomodoroCompletedState;
+        private readonly IWindowState breakSkippedState;
         private readonly IWindowState breakFinishedState;
         private readonly IWindowState pomodoroInterruptedState;
         private readonly IWindowState shortBreakInterruptedState;
@@ -47,6 +50,8 @@ namespace Tomighty.Windows.Timer
         private readonly GlobalLeftMouseDownMonitor outsideClickMonitor;
         private DateTime completionAcknowledgedTime = DateTime.MinValue;
         private bool completionAlertPending;
+        private readonly Func<DateTime> utcNow;
+        private DateTime pomodoroCompletedTime = DateTime.MinValue;
 
         public TimerWindowPresenter(IPomodoroEngine pomodoroEngine, ICountdownClock countdownClock, IEventHub eventHub, IUserPreferences userPreferences)
             : this(pomodoroEngine, countdownClock, eventHub, userPreferences, new ForegroundFullscreenWindowDetector())
@@ -59,16 +64,30 @@ namespace Tomighty.Windows.Timer
             IEventHub eventHub,
             IUserPreferences userPreferences,
             IFullscreenWindowDetector fullscreenWindowDetector)
+            : this(pomodoroEngine, countdownClock, eventHub, userPreferences, fullscreenWindowDetector, () => DateTime.UtcNow)
         {
+        }
+
+        internal TimerWindowPresenter(
+            IPomodoroEngine pomodoroEngine,
+            ICountdownClock countdownClock,
+            IEventHub eventHub,
+            IUserPreferences userPreferences,
+            IFullscreenWindowDetector fullscreenWindowDetector,
+            Func<DateTime> utcNow)
+        {
+            this.pomodoroEngine = pomodoroEngine;
             this.countdownClock = countdownClock;
             this.userPreferences = userPreferences;
             this.fullscreenWindowDetector = fullscreenWindowDetector;
+            this.utcNow = utcNow;
 
             idleState = new IdleState(pomodoroEngine);
             pomodoroState = new PomodoroState(pomodoroEngine);
             shortBreakState = new ShortBreakState(pomodoroEngine);
             longBreakState = new LongBreakState(pomodoroEngine);
             pomodoroCompletedState = new PomodoroCompletedState(pomodoroEngine, AcknowledgeCompletion);
+            breakSkippedState = new BreakSkippedState(pomodoroEngine);
             breakFinishedState = new BreakFinishedState(pomodoroEngine, AcknowledgeCompletion);
             pomodoroInterruptedState = new TimerInterruptedState("Pomodoro interrupted", IntervalType.Pomodoro, pomodoroEngine);
             shortBreakInterruptedState = new BreakInterruptedState("Short break interrupted", pomodoroEngine);
@@ -145,6 +164,7 @@ namespace Tomighty.Windows.Timer
                 if (!window.IsHandleCreated && window.Handle == IntPtr.Zero)
                     return;
 
+                SkipBreakIfSuggestionIsStale();
                 window.Show(GetLocationAboveTrayIcon);
                 ResetOutsideClickTracking();
 
@@ -172,6 +192,10 @@ namespace Tomighty.Windows.Timer
                 RunOnWindowThread(() =>
                 {
                     EnsureWindow();
+
+                    if (@event.IntervalType == IntervalType.Pomodoro)
+                        pomodoroCompletedTime = utcNow();
+
                     requiresManualClose = true;
                     EnterState(GetCompletedIntervalStateFor(@event.IntervalType), @event.RemainingTime);
                     ShowCompletionAlert();
@@ -532,7 +556,17 @@ namespace Tomighty.Windows.Timer
                 return;
             }
 
-            if (!completionAlertPending || window.Visible || shouldSuppress)
+            if (!completionAlertPending || window.Visible)
+                return;
+
+            // An alert held back behind a fullscreen app until its break window
+            // has passed no longer has a point: drop it instead of ambushing the
+            // user, once they quit the game, with a break for a pomodoro that
+            // ended long ago.
+            if (SkipBreakIfSuggestionIsStale())
+                return;
+
+            if (shouldSuppress)
                 return;
 
             completionAlertPending = false;
@@ -547,6 +581,36 @@ namespace Tomighty.Windows.Timer
                 window.Show(GetCompletionAlertLocation);
 
             ResetOutsideClickTracking();
+        }
+
+        // A pomodoro whose break was never started within the break's own length
+        // has effectively skipped it: by now that break would have been over.
+        // Offering "take a break" again would be answering a question the user
+        // stopped asking, so the popup goes back to offering the next pomodoro.
+        // Only the offer changes: an explicit click on a break button that is
+        // already on screen is always honoured.
+        private bool SkipBreakIfSuggestionIsStale()
+        {
+            if (currentState != pomodoroCompletedState || pomodoroCompletedTime == DateTime.MinValue)
+                return false;
+
+            // Wall-clock, so time spent asleep or hibernating counts as time away.
+            if (utcNow() - pomodoroCompletedTime < BreakSkipGracePeriod)
+                return false;
+
+            requiresManualClose = false;
+            completionAlertPending = false;
+            EnterState(breakSkippedState, Duration.Zero);
+            return true;
+        }
+
+        private TimeSpan BreakSkipGracePeriod
+        {
+            get
+            {
+                var breakDuration = userPreferences.GetIntervalDuration(pomodoroEngine.SuggestedBreakType);
+                return TimeSpan.FromSeconds(Math.Max(MinimumBreakSkipGraceSeconds, breakDuration.Seconds));
+            }
         }
 
         private bool ShouldSuppressCompletionAlert()
@@ -732,6 +796,32 @@ namespace Tomighty.Windows.Timer
             {
                 acknowledgeCompletion();
                 pomodoroEngine.StartTimer(IntervalType.LongBreak);
+            }
+        }
+
+        private class BreakSkippedState : IWindowState
+        {
+            private readonly IPomodoroEngine pomodoroEngine;
+
+            public BreakSkippedState(IPomodoroEngine pomodoroEngine)
+            {
+                this.pomodoroEngine = pomodoroEngine;
+            }
+
+            public void Apply(TimerWindow window, Duration remainingTime)
+            {
+                if (window == null)
+                    return;
+
+                window.UpdateTitle("Pomodoro finished");
+                window.UpdateColorScheme(TimerWindow.DarkGray);
+                window.HideTimeDisplay();
+                window.SetTimerAction("Start Pomodoro", StartTimer, ModernTheme.ActionButtonBackColor);
+            }
+
+            private void StartTimer()
+            {
+                pomodoroEngine.StartTimer(IntervalType.Pomodoro);
             }
         }
 
